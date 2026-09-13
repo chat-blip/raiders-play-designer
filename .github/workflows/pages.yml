@@ -32,7 +32,7 @@ jobs:
           mkdir -p site
           cp index.html app.js plays.js playbook.json playbook-data.js pack-assets.js cloud.js robots.txt OPEN-ME.txt .nojekyll site/
           python3 - <<'PY'
-          import json, os
+          import json, os, pathlib, re
           cfg = {
             "owner": "chat-blip",
             "repo": "raiders-play-designer",
@@ -43,6 +43,14 @@ jobs:
           open("site/cloud-config.js", "w", encoding="utf-8").write(
               "window.RAIDERS_CLOUD = " + json.dumps(cfg) + ";\n"
           )
+          stamp = os.environ.get("GITHUB_RUN_ID") or "dev"
+          html = pathlib.Path("site/index.html")
+          html.write_text(
+              re.sub(r'\?v=[^"]+', "?v=run" + stamp, html.read_text(encoding="utf-8")),
+              encoding="utf-8",
+          )
+          print("cloud_token_len", len(cfg["token"]))
+          print("cloud_pin_len", len(cfg["pin"]))
           PY
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
