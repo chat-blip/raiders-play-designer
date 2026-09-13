@@ -1,0 +1,9 @@
+Raiders Play Designer — game day
+
+1. Unzip. Keep the files in this folder together.
+2. Double-click Open Play Designer.bat  (or index.html)
+3. No Wi-Fi needed after that.
+4. Click Full screen so the kids can see the play.
+
+This pack has the designer plus every play, kid name, and the
+12-play game list from the computer that created it.

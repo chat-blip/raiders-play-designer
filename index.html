@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Raiders Play Designer</title>
+  <style>
+    :root {
+      --navy: #0b1f3a;
+      --navy-2: #16355c;
+      --gold: #cda425;
+      --run: #2d6a4f;
+      --pass: #cda425;
+      --red: #c62828;
+      --line: #1a1a1a;
+      --bg: #e8edf3;
+      --panel: #f7f8fa;
+      --text: #122033;
+      --muted: #5b6b80;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; font-family: "Segoe UI", system-ui, sans-serif; color: var(--text); background: var(--bg); }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .app, .sheet, .sheet-head, .sheet-foot, .sheet-body, .stage, .sidebar, .tools, .top, .play-item, .hint {
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .sheet, .sheet-body, svg#field { -webkit-user-drag: none; }
+    .play-item, .play-list { -webkit-user-drag: auto; }
+    input, textarea, select { -webkit-user-select: text; user-select: text; }
+    .app { display: grid; grid-template-rows: 52px 1fr; height: 100%; }
+    .top {
+      background: var(--navy); color: #fff; display: flex; align-items: center; gap: 14px;
+      padding: 0 16px; border-bottom: 4px solid var(--gold);
+    }
+    .brand { font-weight: 800; letter-spacing: .08em; font-size: 15px; }
+    .brand span { color: var(--gold); font-weight: 600; letter-spacing: 0; margin-left: 8px; font-size: 13px; }
+    .top .spacer { flex: 1; }
+    .top button, .side-actions button {
+      background: #fff; color: var(--navy); border: 0; border-radius: 4px;
+      padding: 6px 10px; font-size: 12px; font-weight: 650;
+    }
+    .top button.ghost { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.35); }
+    .layout {
+      display: grid;
+      grid-template-columns: var(--side-w, 268px) 7px minmax(240px, 1fr) 7px var(--tool-w, 220px);
+      min-height: 0;
+    }
+    .col-resizer {
+      cursor: col-resize;
+      background: #d5dde7;
+      position: relative;
+      z-index: 3;
+    }
+    .col-resizer:hover, .col-resizer.dragging { background: var(--navy); }
+    .col-resizer::after {
+      content: "";
+      position: absolute;
+      inset: 0 -4px;
+    }
+    .sidebar, .tools {
+      background: var(--panel); border-color: #d5dde7; overflow: auto; padding: 8px 10px;
+      min-height: 0;
+    }
+    .sidebar { border-right: 1px solid #d5dde7; display: flex; flex-direction: column; overflow: hidden; }
+    .play-list { flex: 1; overflow: auto; min-height: 100px; }
+    .tools { border-left: 1px solid #d5dde7; }
+    h2 { margin: 0 0 4px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+    .field-label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+    .row { display: flex; gap: 6px; margin-bottom: 6px; }
+    .row input, .row select, .tools select, .tools input, .tools textarea {
+      width: 100%; border: 1px solid #c9d3df; border-radius: 4px; padding: 5px 7px; background: #fff;
+    }
+    .play-list { display: flex; flex-direction: column; gap: 2px; }
+    .play-item {
+      display: flex; gap: 5px; align-items: center; text-align: left;
+      width: 100%; border: 1px solid transparent; background: #fff; border-radius: 4px; padding: 3px 6px;
+      cursor: grab;
+    }
+    .play-item:hover { border-color: #c9d3df; }
+    .play-item.active { border-color: var(--navy); background: #e8eef6; }
+    .play-item.dragging { opacity: 0.4; cursor: grabbing; }
+    .play-item.drop-before { box-shadow: inset 0 2px 0 var(--navy); }
+    .play-item.drop-after { box-shadow: inset 0 -2px 0 var(--navy); }
+    .play-item .grip {
+      flex: none; width: 6px; align-self: stretch; margin: 0;
+      background: repeating-linear-gradient(to bottom, #b7c0cc 0 2px, transparent 2px 4px);
+      opacity: 0.7;
+    }
+    .play-item .n { font-weight: 800; width: 22px; flex: none; font-size: 12px; }
+    .play-item .n.pass { color: var(--red); }
+    .play-item .meta {
+      font-size: 12px; color: var(--text); flex: 1; min-width: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.25;
+    }
+    .play-item .meta b { font-size: 11px; color: var(--muted); font-weight: 650; }
+    .play-item .meta b::after { content: " · "; color: #b7c0cc; font-weight: 400; }
+    .star { color: var(--gold); font-style: normal; }
+    .fav-btn {
+      flex: none; border: 0; background: transparent; color: #c5cdd6;
+      font-size: 14px; line-height: 1; padding: 0; cursor: pointer;
+    }
+    .fav-btn.on { color: var(--gold); }
+    .set-panel {
+      display: flex; flex-direction: column; min-height: 0; flex: 1.35;
+      border-top: 1px solid #d5dde7; margin: 6px -10px 0; padding: 6px 10px 0;
+    }
+    .set-list {
+      flex: 1; overflow: auto; min-height: 140px;
+      display: flex; flex-direction: column; gap: 2px;
+      background: #eef2f6; border: 1px dashed #b7c2cf; border-radius: 6px; padding: 4px;
+    }
+    .set-list.drop-ready { border-color: var(--navy); background: #e4ebf4; box-shadow: inset 0 0 0 1px var(--navy); }
+    .play-list.nav-on, .set-list.nav-on { box-shadow: inset 0 0 0 2px var(--navy); }
+    .set-empty {
+      margin: auto; padding: 8px 6px; text-align: center;
+      font-size: 11px; color: var(--muted); line-height: 1.35; pointer-events: none;
+    }
+    .set-item .rm {
+      flex: none; border: 0; background: transparent; color: #8a96a6;
+      font-size: 15px; line-height: 1; padding: 0 2px; cursor: pointer;
+    }
+    .set-item .rm:hover { color: var(--navy); }
+    .set-item .seq { font-weight: 800; width: 16px; flex: none; color: var(--muted); font-size: 11px; }
+    .set-nav { display: flex; align-items: center; gap: 4px; margin: 6px 0 0; }
+    .set-nav button {
+      flex: none; background: #fff; color: var(--navy); border: 0; border-radius: 4px;
+      padding: 4px 8px; font-size: 11px; font-weight: 650;
+    }
+    .set-nav .pos { flex: 1; font-size: 11px; font-weight: 650; color: var(--text); text-align: center; }
+    .sheet-star {
+      display: none; color: var(--gold); font-size: 40px; line-height: 1;
+      font-weight: 800; -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .sheet-star.on { display: inline-block; }
+    .side-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 6px 0 0; }
+    .side-actions button { padding: 5px 8px; font-size: 11px; }
+    .side-actions button.wide { grid-column: 1 / -1; }
+    .stage { display: flex; flex-direction: column; min-width: 0; background: #dfe6ee; }
+    .sheet {
+      margin: 12px; background: #fff; border: 1px solid #cfd8e3; display: flex; flex-direction: column; min-height: 0; flex: 1;
+    }
+    .sheet-head, .sheet-foot {
+      background: var(--navy); color: #fff; display: flex; align-items: center; gap: 14px;
+      padding: 10px 16px; height: 96px; min-height: 96px; max-height: 96px; position: relative;
+      overflow: hidden;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .band {
+      position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none;
+    }
+    .sheet-head > *:not(.band), .sheet-foot > *:not(.band) { position: relative; z-index: 1; }
+    .sheet-head { border-bottom: 4px solid var(--gold); }
+    .sheet-foot { border-top: 4px solid var(--gold); }
+    .sheet-head .num, .print-num {
+      color: var(--gold); font-weight: 800; font-size: 40px; width: auto; min-width: 0;
+      line-height: 1.1;
+    }
+    .sheet-head .num.pass, .print-num.pass { color: #ff6b6b; }
+    .titles {
+      flex: 1; min-width: 0; overflow: hidden;
+      display: flex; flex-direction: column; justify-content: center; gap: 2px;
+    }
+    .titles strong {
+      display: block; width: 100%; font-size: 40px; line-height: 1.15; font-weight: 800;
+      white-space: nowrap; overflow: hidden;
+    }
+    .titles em {
+      display: block; width: 100%;
+      font-style: normal; font-size: 16px; color: #b9c6d6; line-height: 1.2;
+      white-space: nowrap; overflow: hidden;
+    }
+    .badge {
+      display: inline-block; border-radius: 8px; padding: 8px 14px; font-size: 22px; font-weight: 800;
+      background: var(--run); color: #fff; letter-spacing: .06em; line-height: 1.1;
+    }
+    .badge.pass { background: var(--gold); color: var(--navy); }
+    .print-num {
+      background: #fff; color: var(--navy); font-size: 40px; line-height: 1.1; padding: 6px 12px; font-weight: 900;
+    }
+    .print-num.pass { color: var(--red); }
+    .sheet-body { flex: 1; min-height: 360px; background: #fff; }
+    svg#field { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; -webkit-user-select: none; user-select: none; }
+    svg#field text { pointer-events: none; }
+    .hint { padding: 6px 14px; font-size: 12px; color: var(--muted); background: #f3f6f9; border-top: 1px solid #e4ebf2; }
+    .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+    .tool-grid button, .tools .full {
+      border: 1px solid #c9d3df; background: #fff; border-radius: 6px; padding: 8px 6px; font-size: 12px; font-weight: 650;
+    }
+    .tool-grid button.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+    .check { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 8px 0 12px; }
+    .tools textarea { min-height: 90px; resize: vertical; }
+    .keys { font-size: 11px; color: var(--muted); line-height: 1.45; margin-top: 10px; }
+    .keys b { color: var(--text); }
+    .present-bar {
+      display: none;
+      position: fixed;
+      left: 50%;
+      bottom: 16px;
+      transform: translateX(-50%);
+      z-index: 50;
+      align-items: center;
+      gap: 10px;
+      background: var(--navy);
+      color: #fff;
+      border: 2px solid var(--gold);
+      border-radius: 8px;
+      padding: 8px 12px;
+      box-shadow: 0 10px 28px rgba(11, 31, 58, 0.4);
+    }
+    body.present .present-bar { display: flex; }
+    .present-bar button {
+      background: #fff;
+      color: var(--navy);
+      border: 0;
+      border-radius: 4px;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 750;
+    }
+    .present-bar .pos {
+      min-width: 128px;
+      text-align: center;
+      font-weight: 800;
+      color: var(--gold);
+      font-size: 14px;
+      white-space: nowrap;
+    }
+    body.present .top, body.present .sidebar, body.present .tools,
+    body.present .hint, body.present .col-resizer, body.present .handle {
+      display: none !important;
+    }
+    body.present, body.present .app, body.present .layout, body.present .stage {
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
+    }
+    body.present .app { grid-template-rows: 1fr; }
+    body.present .layout { grid-template-columns: 1fr !important; }
+    body.present .sheet { margin: 0; border: 0; height: 100%; min-height: 0; }
+    body.present .sheet-body { min-height: 0; }
+    body.present svg#field { cursor: default; pointer-events: none; }
+    body.locked .app, body.locked .present-bar { visibility: hidden; }
+    #pinGate {
+      position: fixed; inset: 0; z-index: 80;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--navy);
+    }
+    #pinGate[hidden] { display: none !important; }
+    #pinGate .box {
+      width: min(380px, 92vw);
+      background: #fff;
+      border-top: 4px solid var(--gold);
+      padding: 28px 24px 22px;
+      border-radius: 6px;
+    }
+    #pinGate h1 {
+      margin: 0 0 6px;
+      font-size: 18px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--navy);
+    }
+    #pinGate p { margin: 0 0 14px; font-size: 13px; color: var(--muted); }
+    #pinGate input {
+      width: 100%; border: 1px solid #c9d3df; border-radius: 4px;
+      padding: 10px 12px; margin-bottom: 10px;
+    }
+    #pinGate button {
+      width: 100%; border: 0; border-radius: 4px;
+      background: var(--navy); color: #fff;
+      padding: 10px 12px; font-weight: 750;
+    }
+    #pinErr { min-height: 18px; margin: 8px 0 0; font-size: 12px; color: var(--red); }
+    #toast {
+      position: fixed; bottom: 16px; right: 16px; background: var(--navy); color: #fff;
+      padding: 8px 12px; border-radius: 6px; opacity: 0; pointer-events: none; transition: opacity .15s;
+    }
+    #toast.show { opacity: 1; }
+    .player circle { fill: #fff; stroke: #111; stroke-width: 2.4; }
+    .player.red circle { fill: #e53935; stroke: #111; }
+    .player.gold circle { fill: #f2c14e; stroke: #111; }
+    .player text { font-size: 11px; font-weight: 800; fill: #111; pointer-events: none; }
+    .player.off text.pos { font-size: 15px; }
+    .player.off.stacked text.pos { font-size: 14px; }
+    .player text.who { font-size: 9.5px; font-weight: 800; letter-spacing: 0.02em; fill: #6e5410; }
+    .player.red text { fill: #fff; }
+    .player.red text.who { fill: #c9a227; }
+    .player.gold text.who { fill: #0b1f3a; }
+    .player.def polygon { fill: #111; stroke: #111; }
+    .player.def text { fill: #fff; font-size: 9px; }
+    .player.def text.who { font-size: 8.5px; fill: #c9a227; }
+    .roster {
+      display: grid; grid-template-columns: 22px 1fr 22px 1fr; gap: 4px 6px;
+      align-items: center; margin: 0 0 10px;
+    }
+    .roster label { font-size: 11px; font-weight: 800; color: var(--text); }
+    .roster input {
+      width: 100%; border: 1px solid #c9d3df; border-radius: 4px;
+      padding: 3px 5px; font-size: 12px; text-transform: uppercase; background: #fff;
+    }
+    .who-row { margin: -4px 0 10px; }
+    .who-row .field-label { margin-bottom: 3px; }
+    .player.sel circle, .player.sel polygon { stroke: #1e88e5; stroke-width: 3.5; }
+    .assign { fill: none; stroke: #111; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+    .assign.ball { stroke: #1565d8 !important; stroke-width: 3.2; }
+    .assign.motion { stroke-dasharray: 7 6; }
+    .assign.sel { stroke-width: 3.4; }
+    .assign.drawing { opacity: .7; }
+    .assign-end.block { stroke: #111; stroke-width: 3.2; }
+    .arrow { fill: #111; stroke: none; }
+    .arrow.ball { fill: #1565d8 !important; }
+    .handle { fill: #fff; stroke: #1e88e5; stroke-width: 2; cursor: grab; }
+    .handle.active { fill: #1e88e5; }
+    .handle.mid { fill: #fff; stroke: #1e88e5; stroke-width: 2; stroke-dasharray: 3 2; }
+    .motion-spot { fill: #fff; stroke: #111; stroke-width: 2; stroke-dasharray: 4 3; }
+    .field-marks { pointer-events: none; }
+    .los { stroke: #2e7d32; stroke-width: 2.6; }
+    .print-only { display: none; }
+    #printBook { display: none; }
+    @media print {
+      @page { size: letter landscape; margin: 0.2in; }
+      html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden !important;
+        background: #fff !important;
+      }
+      html, body, .sheet-head, .sheet-foot, .badge, .print-num, .sheet-star {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .top, .sidebar, .tools, .hint, #toast, .handle, .col-resizer, .present-bar, #pinGate { display: none !important; }
+      .app, .layout, .stage {
+        display: block;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        background: #fff;
+        overflow: hidden;
+      }
+      .sheet {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: 100%;
+        max-height: 100%;
+        margin: 0;
+        border: 0;
+        overflow: hidden;
+        page-break-after: avoid;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+      .sheet-head, .sheet-foot {
+        flex: 0 0 auto;
+        height: 0.9in;
+        min-height: 0.9in;
+        max-height: 0.9in;
+        padding: 10px 14px;
+        background: #0b1f3a !important;
+        color: #fff !important;
+        box-shadow: inset 0 0 0 2000px #0b1f3a;
+      }
+      .sheet-star { color: #cda425 !important; }
+      .sheet-star.on { display: inline-block !important; }
+      .sheet-body {
+        flex: 1 1 auto;
+        min-height: 0 !important;
+        overflow: hidden;
+      }
+      .print-only { display: block; }
+      svg#field, svg.print-field { width: 100% !important; height: 100% !important; display: block; }
+      html.print-book, body.print-book {
+        overflow: visible !important;
+        height: auto !important;
+      }
+      body.print-book .app { display: none !important; }
+      body.print-book #printBook { display: block !important; }
+      body.print-book #printBook .sheet {
+        height: 7.5in;
+        max-height: 7.5in;
+        page-break-after: always;
+        break-after: page;
+        page-break-inside: avoid;
+      }
+      body.print-book #printBook .sheet:last-child {
+        page-break-after: auto;
+        break-after: auto;
+      }
+      body.print-book #printBook .sheet-body {
+        display: flex;
+        flex-direction: column;
+        min-height: 0 !important;
+      }
+      body.print-book #printBook svg.print-field {
+        flex: 1;
+        min-height: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <div class="brand">RAIDERS <span>Play Designer · 4th Grade</span></div>
+      <div class="spacer"></div>
+      <button type="button" id="btnUndo" class="ghost">Undo</button>
+      <button type="button" id="btnRedo" class="ghost">Redo</button>
+      <button type="button" id="btnPrint">Print page</button>
+      <button type="button" id="btnPrintAll">Print all</button>
+      <button type="button" id="btnPresent" title="Kids view: the play fills the laptop. Arrow keys flip plays. Esc exits.">Full screen</button>
+      <button type="button" id="btnExport" title="Saves plays, kid names, and game lists as a JSON file">Save book</button>
+      <button type="button" id="btnLaptop" title="Full folder for Drive: designer + every play, name, and game list">Laptop pack</button>
+      <button type="button" id="btnImport" class="ghost" title="Load a saved book on this computer">Load book</button>
+      <input type="file" id="fileImport" accept="application/json" hidden />
+    </header>
+    <div class="layout">
+      <aside class="sidebar">
+        <h2>Playbook</h2>
+        <p class="keys" style="margin:0 0 4px">Click, then ↑ ↓ · drag down to add</p>
+        <div class="row">
+          <input id="playSearch" placeholder="Search plays" />
+          <select id="playFilter" style="width:92px">
+            <option value="all">All</option>
+            <option value="run">Run</option>
+            <option value="pass">Pass</option>
+          </select>
+        </div>
+        <div id="playList" class="play-list"></div>
+        <div class="set-panel">
+          <h2>Game list</h2>
+          <div class="row">
+            <select id="setSelect"></select>
+            <button type="button" id="btnNewSet" style="width:auto;flex:none">New</button>
+          </div>
+          <input id="setName" style="margin-bottom:4px;width:100%;border:1px solid #c9d3df;border-radius:4px;padding:5px 7px" placeholder="List name" />
+          <div id="setList" class="set-list"></div>
+          <div class="set-nav">
+            <button type="button" id="btnSetPrev">Prev</button>
+            <span class="pos" id="setPos">Empty</span>
+            <button type="button" id="btnSetNext">Next</button>
+            <button type="button" id="btnPrintSet">Print</button>
+            <button type="button" id="btnClearSet">Clear</button>
+          </div>
+        </div>
+        <div class="side-actions">
+          <button type="button" id="btnNew">New play</button>
+          <button type="button" id="btnDup">Duplicate</button>
+          <button type="button" id="btnFlip">Flip L/R</button>
+          <button type="button" id="btnDelPlay">Delete play</button>
+          <button type="button" id="btnReset" class="wide">Reload Game 3 book</button>
+        </div>
+      </aside>
+      <div class="col-resizer" id="resizeSidebar" role="separator" aria-orientation="vertical" aria-label="Resize play list" title="Drag to resize the play list. Double-click to reset."></div>
+      <main class="stage">
+        <section class="sheet">
+          <div class="sheet-head">
+            <svg class="band" aria-hidden="true" preserveAspectRatio="none" viewBox="0 0 100 52">
+              <rect width="100" height="52" fill="#0b1f3a" />
+              <rect y="48" width="100" height="4" fill="#cda425" />
+            </svg>
+            <div class="num" id="printNum">01</div>
+            <div class="titles">
+              <strong id="printTitle">I Right   A-Motion QB Belly Left</strong>
+              <em id="printFamily">I-formation</em>
+            </div>
+            <span class="sheet-star" id="printStar" aria-hidden="true">★</span>
+            <span class="badge run" id="printType">RUN</span>
+          </div>
+          <div class="sheet-body">
+            <svg id="field" viewBox="0 0 1200 720" xmlns="http://www.w3.org/2000/svg">
+              <rect width="1200" height="720" fill="#fff" />
+              <g id="world"></g>
+            </svg>
+          </div>
+          <div class="sheet-foot">
+            <svg class="band" aria-hidden="true" preserveAspectRatio="none" viewBox="0 0 100 52">
+              <rect width="100" height="52" fill="#0b1f3a" />
+              <rect width="100" height="4" fill="#cda425" />
+            </svg>
+            <div class="titles">
+              <strong id="printTitle2">I Right   A-Motion QB Belly Left</strong>
+              <em class="print-only">St. Regis Catholic · Birmingham</em>
+            </div>
+            <span class="sheet-star" id="printStar2" aria-hidden="true">★</span>
+            <span class="badge run" id="printType2">RUN</span>
+            <div class="print-num" id="printNumBig">01</div>
+          </div>
+        </section>
+        <div class="hint" id="hint"></div>
+      </main>
+      <div class="col-resizer" id="resizeTools" role="separator" aria-orientation="vertical" aria-label="Resize tools" title="Drag to resize the right panel. Double-click to reset."></div>
+      <aside class="tools">
+        <h2>Play</h2>
+        <div class="row">
+          <input id="numInput" style="width:70px" />
+          <select id="typeSelect" style="width:90px">
+            <option value="run">Run</option>
+            <option value="pass">Pass</option>
+          </select>
+        </div>
+        <input id="nameInput" style="margin-bottom:8px;width:100%;border:1px solid #c9d3df;border-radius:4px;padding:6px 8px" />
+        <div class="field-label">Offense</div>
+        <select id="formSelect" style="margin-bottom:8px"></select>
+        <div class="field-label">Defense</div>
+        <select id="defSelect" style="margin-bottom:12px"></select>
+        <h2>Kids</h2>
+        <p class="field-label" style="text-transform:none;letter-spacing:0;font-size:11px;margin-bottom:6px">Names on this play only. Apply copies them to every play.</p>
+        <div class="roster" id="rosterGrid"></div>
+        <button type="button" class="full" id="btnApplyKids" style="width:100%;margin:0 0 10px">Apply to all plays</button>
+        <div class="who-row" id="whoRow" hidden>
+          <div class="field-label">This play · <span id="whoSpot">A</span></div>
+          <input id="whoInput" maxlength="4" placeholder="Override initials" />
+        </div>
+        <h2>Draw</h2>
+        <div class="tool-grid">
+          <button type="button" data-tool="select">Select (V)</button>
+          <button type="button" data-tool="route">Route (R)</button>
+          <button type="button" data-tool="block">Block (B)</button>
+          <button type="button" data-tool="motion">Motion (M)</button>
+          <button type="button" data-tool="ball">Ball path (Q)</button>
+          <button type="button" id="btnDelete">Delete</button>
+          <button type="button" data-tool="paintRed">Ball carrier</button>
+          <button type="button" data-tool="paintGold">Primary</button>
+          <button type="button" data-tool="addOff">+ Offense</button>
+          <button type="button" data-tool="addDef">+ Defense</button>
+        </div>
+        <label class="check"><input type="checkbox" id="curveOn" checked /> Curve lines</label>
+        <label class="check"><input type="checkbox" id="hideDef" /> Hide defense</label>
+        <h2>Coaching note</h2>
+        <textarea id="notes" placeholder="One read. Throw it away if covered."></textarea>
+        <p class="keys">
+          <b>Drag</b> a player to move him (his lines come with him).<br />
+          <b>Click a line</b>, then drag the solid dots — or the <b>hollow middle dot</b> to curve it.<br />
+          Keep <b>Curve lines</b> on (like ball path). Turn it off for sharp outs.<br />
+          <b>Motion then block:</b> Motion (M) on B, Enter, then Block (B) and click B again — the T-bar starts at the dashed end.<br />
+          <b>Right-click</b> or <b>Enter</b> finishes a drawing.<br />
+          <b>Double-click</b> a circle to put initials under the position.<br />
+          <b>↑ ↓</b> next play · <b>Ctrl+Z</b> undo · <b>C</b> curve · <b>F</b> flip · <b>Full screen</b> for the kids · saves to this site.
+        </p>
+      </aside>
+    </div>
+  </div>
+  <div id="pinGate" hidden>
+    <form class="box" id="pinForm">
+      <h1>Raiders</h1>
+      <p>Play designer · enter the coach PIN</p>
+      <input id="pinInput" type="password" autocomplete="current-password" placeholder="PIN" />
+      <button type="submit">Open playbook</button>
+      <p id="pinErr"></p>
+    </form>
+  </div>
+  <div id="printBook"></div>
+  <div class="present-bar" id="presentBar">
+    <button type="button" id="btnPresentPrev">Prev</button>
+    <span class="pos" id="presentPos">1 / 1</span>
+    <button type="button" id="btnPresentNext">Next</button>
+    <button type="button" id="btnPresentExit">Exit</button>
+  </div>
+  <div id="toast"></div>
+  <script src="plays.js?v=cloud1"></script>
+  <script src="playbook-data.js?v=cloud1"></script>
+  <script src="cloud-config.js?v=cloud1"></script>
+  <script src="cloud.js?v=cloud1"></script>
+  <script src="app.js?v=cloud1"></script>
+</body>
+</html>

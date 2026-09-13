@@ -1,0 +1,5 @@
+*.zip
+cloud-config.js
+Thumbs.db
+.DS_Store
+*.log

@@ -1,0 +1,52 @@
+name: Deploy Pages
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "playbook.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stage site
+        env:
+          PLAYBOOK_TOKEN: ${{ secrets.PLAYBOOK_TOKEN }}
+          PLAYBOOK_PIN: ${{ secrets.PLAYBOOK_PIN }}
+        run: |
+          mkdir -p site
+          cp index.html app.js plays.js playbook.json playbook-data.js pack-assets.js cloud.js robots.txt OPEN-ME.txt .nojekyll site/
+          python3 - <<'PY'
+          import json, os
+          cfg = {
+            "owner": "chat-blip",
+            "repo": "raiders-play-designer",
+            "path": "playbook.json",
+            "token": os.environ.get("PLAYBOOK_TOKEN") or "",
+            "pin": os.environ.get("PLAYBOOK_PIN") or "",
+          }
+          open("site/cloud-config.js", "w", encoding="utf-8").write(
+              "window.RAIDERS_CLOUD = " + json.dumps(cfg) + ";\n"
+          )
+          PY
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4
