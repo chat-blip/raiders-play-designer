@@ -86,9 +86,11 @@
     const c = cfg();
     if (!c || !c.owner || !c.repo || !c.path) return null;
     try {
+      const headers = { Accept: "application/vnd.github+json" };
+      if (c.token) headers.Authorization = "Bearer " + c.token;
       const r = await fetch(
         api + "/repos/" + c.owner + "/" + c.repo + "/contents/" + c.path,
-        { headers: { Accept: "application/vnd.github+json" } }
+        { headers: headers, cache: "no-store" }
       );
       if (!r.ok) return null;
       const meta = await r.json();
