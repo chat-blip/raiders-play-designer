@@ -195,12 +195,19 @@
     .tools textarea { min-height: 90px; resize: vertical; }
     .keys { font-size: 11px; color: var(--muted); line-height: 1.45; margin-top: 10px; }
     .keys b { color: var(--text); }
-    .present-bar {
+    .present-dock {
       display: none;
       position: fixed;
       right: 20px;
       bottom: 112px;
       z-index: 50;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+    body.present .present-dock { display: flex; }
+    .present-bar {
+      display: flex;
       align-items: center;
       gap: 8px;
       background: var(--navy);
@@ -210,7 +217,25 @@
       padding: 8px 10px;
       box-shadow: 0 10px 28px rgba(11, 31, 58, 0.4);
     }
-    body.present .present-bar { display: flex; }
+    .present-sketch {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+      touch-action: none;
+    }
+    body.present .present-sketch { display: block; }
+    .present-sketch path, .present-sketch circle {
+      fill: none;
+      stroke: #c62828;
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .present-sketch circle { fill: #c62828; stroke: none; }
     .present-bar button {
       background: #fff;
       color: var(--navy);
@@ -242,7 +267,7 @@
     body.present .sheet { margin: 0; border: 0; height: 100%; min-height: 0; }
     body.present .sheet-body { min-height: 0; }
     body.present svg#field { cursor: default; pointer-events: none; }
-    body.locked .app, body.locked .present-bar { visibility: hidden; }
+    body.locked .app, body.locked .present-dock, body.locked .present-sketch { visibility: hidden; }
     #pinGate {
       position: fixed; inset: 0; z-index: 80;
       display: flex; align-items: center; justify-content: center;
@@ -334,7 +359,7 @@
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
-      .top, .sidebar, .tools, .hint, #toast, .handle, .col-resizer, .present-bar, #pinGate { display: none !important; }
+      .top, .sidebar, .tools, .hint, #toast, .handle, .col-resizer, .present-dock, .present-sketch, #pinGate { display: none !important; }
       .app, .layout, .stage {
         display: block;
         width: 100%;
@@ -557,17 +582,25 @@
     </form>
   </div>
   <div id="printBook"></div>
-  <div class="present-bar" id="presentBar">
-    <button type="button" id="btnPresentPrev">Prev</button>
-    <span class="pos" id="presentPos">1 / 1</span>
-    <button type="button" id="btnPresentNext">Next</button>
-    <button type="button" id="btnPresentExit">Exit</button>
+  <svg id="presentSketch" class="present-sketch" aria-hidden="true"></svg>
+  <div class="present-dock" id="presentDock">
+    <div class="present-bar" id="presentDrawBar">
+      <span class="pos">Draw</span>
+      <button type="button" id="btnSketchUndo">Undo</button>
+      <button type="button" id="btnSketchClear">Clear</button>
+    </div>
+    <div class="present-bar" id="presentBar">
+      <button type="button" id="btnPresentPrev">Prev</button>
+      <span class="pos" id="presentPos">1 / 1</span>
+      <button type="button" id="btnPresentNext">Next</button>
+      <button type="button" id="btnPresentExit">Exit</button>
+    </div>
   </div>
   <div id="toast"></div>
-  <script src="plays.js?v=cloud2"></script>
-  <script src="playbook-data.js?v=cloud2"></script>
-  <script src="cloud-config.js?v=cloud2"></script>
-  <script src="cloud.js?v=cloud2"></script>
-  <script src="app.js?v=cloud2"></script>
+  <script src="plays.js?v=cloud3"></script>
+  <script src="playbook-data.js?v=cloud3"></script>
+  <script src="cloud-config.js?v=cloud3"></script>
+  <script src="cloud.js?v=cloud3"></script>
+  <script src="app.js?v=cloud3"></script>
 </body>
 </html>

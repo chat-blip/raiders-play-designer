@@ -27,6 +27,8 @@
     presentFrom: null,
     colResize: null,
     present: false,
+    sketch: [],
+    sketchStroke: null,
     drag: null,
     undo: [],
     redo: [],
@@ -633,6 +635,7 @@
 
   function stepPlays(dir) {
     if (state.present) {
+      clearSketch();
       stepThrough(presentList(), dir);
       return;
     }
@@ -1938,6 +1941,72 @@
     return visibleBookPlays();
   }
 
+  function clearSketch() {
+    state.sketch = [];
+    state.sketchStroke = null;
+    renderSketch();
+  }
+
+  function undoSketch() {
+    if (state.sketchStroke) {
+      state.sketchStroke = null;
+    } else if (state.sketch.length) {
+      state.sketch.pop();
+    }
+    renderSketch();
+  }
+
+  function sketchPoint(e) {
+    return { x: e.clientX, y: e.clientY };
+  }
+
+  function renderSketch() {
+    const svg = $("presentSketch");
+    if (!svg) return;
+    svg.innerHTML = "";
+    const strokes = state.sketchStroke ? state.sketch.concat([state.sketchStroke]) : state.sketch;
+    strokes.forEach(function (pts) {
+      if (!pts || !pts.length) return;
+      if (pts.length === 1) {
+        const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        c.setAttribute("cx", pts[0].x);
+        c.setAttribute("cy", pts[0].y);
+        c.setAttribute("r", "5");
+        svg.appendChild(c);
+        return;
+      }
+      const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      let d = "M " + pts[0].x + " " + pts[0].y;
+      for (let i = 1; i < pts.length; i++) d += " L " + pts[i].x + " " + pts[i].y;
+      p.setAttribute("d", d);
+      svg.appendChild(p);
+    });
+  }
+
+  function onSketchDown(e) {
+    if (!state.present || e.button !== 0) return;
+    e.preventDefault();
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+    state.sketchStroke = [sketchPoint(e)];
+    renderSketch();
+  }
+
+  function onSketchMove(e) {
+    if (!state.sketchStroke) return;
+    const last = state.sketchStroke[state.sketchStroke.length - 1];
+    const pt = sketchPoint(e);
+    if (Math.abs(pt.x - last.x) < 1.5 && Math.abs(pt.y - last.y) < 1.5) return;
+    state.sketchStroke.push(pt);
+    renderSketch();
+  }
+
+  function onSketchUp() {
+    if (!state.sketchStroke) return;
+    state.sketch.push(state.sketchStroke);
+    state.sketchStroke = null;
+    renderSketch();
+  }
+
   function updatePresentBar() {
     const el = $("presentPos");
     if (!el) return;
@@ -1954,6 +2023,7 @@
     state.selected = null;
     state.drawing = null;
     document.body.classList.add("present");
+    clearSketch();
     if ($("btnPresent")) $("btnPresent").textContent = "Exit full screen";
     render();
     const root = document.documentElement;
@@ -1964,6 +2034,7 @@
     if (!state.present) return;
     state.present = false;
     state.presentFrom = null;
+    clearSketch();
     document.body.classList.remove("present");
     if ($("btnPresent")) $("btnPresent").textContent = "Full screen";
     scheduleFitChrome();
@@ -2112,6 +2183,15 @@
     if ($("btnPresentExit")) $("btnPresentExit").addEventListener("click", () => exitPresent());
     if ($("btnPresentPrev")) $("btnPresentPrev").addEventListener("click", () => stepPlays(-1));
     if ($("btnPresentNext")) $("btnPresentNext").addEventListener("click", () => stepPlays(1));
+    const sketch = $("presentSketch");
+    if (sketch) {
+      sketch.addEventListener("pointerdown", onSketchDown);
+      sketch.addEventListener("pointermove", onSketchMove);
+      sketch.addEventListener("pointerup", onSketchUp);
+      sketch.addEventListener("pointercancel", onSketchUp);
+    }
+    if ($("btnSketchUndo")) $("btnSketchUndo").addEventListener("click", undoSketch);
+    if ($("btnSketchClear")) $("btnSketchClear").addEventListener("click", clearSketch);
     document.addEventListener("fullscreenchange", () => {
       if (!document.fullscreenElement && state.present) exitPresent(true);
     });
@@ -2120,6 +2200,10 @@
       const typing = /INPUT|TEXTAREA|SELECT/.test((e.target || {}).tagName);
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
         e.preventDefault();
+        if (state.present) {
+          undoSketch();
+          return;
+        }
         if (e.shiftKey) redo();
         else undo();
         return;
