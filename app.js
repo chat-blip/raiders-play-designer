@@ -1021,6 +1021,7 @@
     requestAnimationFrame(function () {
       requestAnimationFrame(function () {
         fitSheetChrome();
+        fitPresentField();
       });
     });
   }
@@ -1228,6 +1229,73 @@
     }
   }
 
+  function playBounds(p) {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    function add(x, y) {
+      if (!isFinite(x) || !isFinite(y)) return;
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }
+    (p.players || []).forEach(function (pl) {
+      if (state.hideDef && pl.side === "def") return;
+      add(pl.x, pl.y);
+    });
+    (p.assignments || []).forEach(function (a) {
+      (livePoints(a, p) || []).forEach(function (pt) {
+        add(pt.x, pt.y);
+      });
+    });
+    if (!isFinite(minX)) return { minX: 0, minY: 0, maxX: VW, maxY: VH };
+    const pad = 48;
+    return {
+      minX: minX - pad,
+      minY: minY - pad,
+      maxX: maxX + pad,
+      maxY: maxY + pad,
+    };
+  }
+
+  function fitPresentField() {
+    const svg = $("field");
+    if (!svg) return;
+    if (!state.present) {
+      svg.setAttribute("viewBox", "0 0 " + VW + " " + VH);
+      return;
+    }
+    const box = playBounds(play());
+    const cw = Math.max(1, svg.clientWidth || VW);
+    const ch = Math.max(1, svg.clientHeight || VH);
+    const aspect = cw / ch;
+    const contentW = Math.max(80, box.maxX - box.minX);
+    const contentH = Math.max(80, box.maxY - box.minY);
+    let vw;
+    let vh;
+    if (contentW / contentH > aspect) {
+      vw = contentW;
+      vh = contentW / aspect;
+    } else {
+      vw = contentH * aspect;
+      vh = contentH;
+    }
+    const MAX_ZOOM = 1.48;
+    const scale = Math.min(VW / vw, VH / vh);
+    if (scale > MAX_ZOOM) {
+      const grow = scale / MAX_ZOOM;
+      vw *= grow;
+      vh *= grow;
+    }
+    let vx = (box.minX + box.maxX) / 2 - vw / 2;
+    let vy = (box.minY + box.maxY) / 2 - vh / 2;
+    if (vw <= VW) vx = Math.min(Math.max(0, vx), VW - vw);
+    if (vh <= VH) vy = Math.min(Math.max(0, vy), VH - vh);
+    svg.setAttribute("viewBox", vx + " " + vy + " " + vw + " " + vh);
+  }
+
   function renderField() {
     const p = play();
     const g = $("world");
@@ -1235,6 +1303,7 @@
     paintPlay(p, g, { interactive: true });
     syncCurveToggle();
     syncWhoRow();
+    fitPresentField();
   }
 
   function bandSvg() {
