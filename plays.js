@@ -117,6 +117,14 @@
         P("A", "A", "off", CX + 58 * s, LOS + 128),
       ];
     }
+    if (kind === "batman") {
+      const s = teSide === "left" ? -1 : 1;
+      return [
+        P("QB", "QB", "off", CX, LOS + 48),
+        P("B", "B", "off", CX - 96 * s, LOS + 158),
+        P("A", "A", "off", CX + 96 * s, LOS + 158),
+      ];
+    }
     return [
       P("QB", "QB", "off", CX, LOS + 48),
       P("B", "B", "off", CX, LOS + 108),
@@ -142,6 +150,8 @@
     "I Left": { family: "I-formation", te: "left", backs: "under", rec: "split" },
     "Split Right": { family: "Split formation", te: "right", backs: "split", rec: "split" },
     "Split Left": { family: "Split formation", te: "left", backs: "split", rec: "split" },
+    "Batman Right": { family: "Batman formation", te: "right", backs: "batman", rec: "split" },
+    "Batman Left": { family: "Batman formation", te: "left", backs: "batman", rec: "split" },
     "QIP I Right": { family: "QIP formation", te: "right", backs: "pistol", rec: "twins" },
     "QIP I Left": { family: "QIP formation", te: "left", backs: "pistol", rec: "twins" },
     "ZIP I Right": { family: "ZIP formation", te: "right", backs: "under", rec: "split" },
