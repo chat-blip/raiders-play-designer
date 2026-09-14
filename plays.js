@@ -118,11 +118,11 @@
       ];
     }
     if (kind === "batman") {
-      const s = teSide === "left" ? -1 : 1;
+      const s = teSide === "left" ? 1 : -1;
       return [
         P("QB", "QB", "off", CX, LOS + 48),
-        P("B", "B", "off", CX - 96 * s, LOS + 158),
-        P("A", "A", "off", CX + 96 * s, LOS + 158),
+        P("B", "B", "off", CX - 70 * s, LOS + 142),
+        P("A", "A", "off", CX + 70 * s, LOS + 142),
       ];
     }
     return [
@@ -133,6 +133,13 @@
   }
 
   function receivers(style, teSide) {
+    if (style === "batman") {
+      const wing = CX + 2 * GAP + 50;
+      if (teSide === "left") {
+        return [P("X", "X", "off", 155, LOS + 14), P("Z", "Z", "off", wing, LOS)];
+      }
+      return [P("X", "X", "off", 1045, LOS + 14), P("Z", "Z", "off", 1200 - wing, LOS)];
+    }
     if (style === "twins") {
       if (teSide === "right") {
         return [P("X", "X", "off", 150, LOS + 8), P("Z", "Z", "off", 230, LOS + 8)];
@@ -150,8 +157,8 @@
     "I Left": { family: "I-formation", te: "left", backs: "under", rec: "split" },
     "Split Right": { family: "Split formation", te: "right", backs: "split", rec: "split" },
     "Split Left": { family: "Split formation", te: "left", backs: "split", rec: "split" },
-    "Batman Right": { family: "Batman formation", te: "right", backs: "batman", rec: "split" },
-    "Batman Left": { family: "Batman formation", te: "left", backs: "batman", rec: "split" },
+    "Batman Right": { family: "Batman formation", te: "left", backs: "batman", rec: "batman" },
+    "Batman Left": { family: "Batman formation", te: "right", backs: "batman", rec: "batman" },
     "QIP I Right": { family: "QIP formation", te: "right", backs: "pistol", rec: "twins" },
     "QIP I Left": { family: "QIP formation", te: "left", backs: "pistol", rec: "twins" },
     "ZIP I Right": { family: "ZIP formation", te: "right", backs: "under", rec: "split" },
