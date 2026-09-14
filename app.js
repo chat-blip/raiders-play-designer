@@ -663,10 +663,19 @@
     stepThrough(visibleBookPlays(), dir);
   }
 
+  function updatePlayCount() {
+    const el = $("playCount");
+    if (!el || !state.book) return;
+    const total = (state.book.plays || []).length;
+    const shown = visibleBookPlays().length;
+    el.textContent = shown === total ? "(" + total + ")" : "(" + shown + " of " + total + ")";
+  }
+
   function renderList() {
     const ul = $("playList");
     ul.innerHTML = "";
     const plays = visibleBookPlays();
+    updatePlayCount();
     if (!plays.length) {
       const empty = document.createElement("div");
       empty.className = "set-empty";
