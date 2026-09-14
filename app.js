@@ -27,6 +27,7 @@
     presentFrom: null,
     colResize: null,
     present: false,
+    favOnly: false,
     sketch: [],
     sketchStroke: null,
     drag: null,
@@ -595,10 +596,26 @@
     renderSetList();
   }
 
+  function syncFavButton() {
+    const btn = $("btnFavOnly");
+    if (!btn) return;
+    btn.classList.toggle("on", !!state.favOnly);
+    btn.setAttribute("aria-pressed", state.favOnly ? "true" : "false");
+    btn.textContent = state.favOnly ? "Show all" : "Show favorites";
+  }
+
+  function toggleFavOnly() {
+    state.favOnly = !state.favOnly;
+    saveUi({ favOnly: state.favOnly });
+    syncFavButton();
+    renderList();
+  }
+
   function visibleBookPlays() {
     const q = (($("playSearch") && $("playSearch").value) || "").toLowerCase();
     const filter = ($("playFilter") && $("playFilter").value) || "all";
     return state.book.plays.filter(function (p) {
+      if (state.favOnly && !p.star) return false;
       if (filter === "run" && p.type !== "run") return false;
       if (filter === "pass" && p.type !== "pass") return false;
       const hay = (p.number + " " + p.formation + " " + p.name).toLowerCase();
@@ -649,7 +666,17 @@
   function renderList() {
     const ul = $("playList");
     ul.innerHTML = "";
-    visibleBookPlays().forEach((p) => {
+    const plays = visibleBookPlays();
+    if (!plays.length) {
+      const empty = document.createElement("div");
+      empty.className = "set-empty";
+      empty.textContent = state.favOnly
+        ? "No favorite plays. Star a play, or tap Show all."
+        : "No plays match.";
+      ul.appendChild(empty);
+      return;
+    }
+    plays.forEach((p) => {
       const li = document.createElement("div");
       li.className = "play-item" + (p.id === state.playId ? " active" : "");
       li.dataset.id = p.id;
@@ -2076,6 +2103,7 @@
 
     $("playSearch").addEventListener("input", renderList);
     $("playFilter").addEventListener("change", renderList);
+    if ($("btnFavOnly")) $("btnFavOnly").addEventListener("click", toggleFavOnly);
     $("playList").addEventListener("pointerdown", () => setListFocus("book"));
     $("setList").addEventListener("pointerdown", () => setListFocus("set"));
     document.querySelector(".set-panel").addEventListener("pointerdown", () => setListFocus("set"));
@@ -2291,6 +2319,8 @@
     state.playId = state.book.plays[0].id;
     bind();
     const ui = loadUi();
+    state.favOnly = !!ui.favOnly;
+    syncFavButton();
     applySideWidth(ui.sideW || SIDE_DEFAULT);
     applyToolWidth(ui.toolW || TOOL_DEFAULT);
     setTool("select");

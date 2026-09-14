@@ -68,6 +68,13 @@
     .play-list { flex: 1; overflow: auto; min-height: 100px; }
     .tools { border-left: 1px solid #d5dde7; }
     h2 { margin: 0 0 4px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+    .playbook-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .playbook-top h2 { margin: 0; flex: 1; }
+    .fav-filter {
+      flex: none; width: auto; border: 1px solid #c9d3df; background: #fff;
+      border-radius: 4px; padding: 4px 8px; font-size: 11px; font-weight: 700;
+    }
+    .fav-filter.on { background: var(--navy); color: #fff; border-color: var(--navy); }
     .field-label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
     .row { display: flex; gap: 6px; margin-bottom: 6px; }
     .row input, .row select, .tools select, .tools input, .tools textarea {
@@ -447,7 +454,10 @@
     </header>
     <div class="layout">
       <aside class="sidebar">
-        <h2>Playbook</h2>
+        <div class="playbook-top">
+          <h2>Playbook</h2>
+          <button type="button" id="btnFavOnly" class="fav-filter" aria-pressed="false">Show favorites</button>
+        </div>
         <p class="keys" style="margin:0 0 4px">Click, then ↑ ↓ · drag down to add</p>
         <div class="row">
           <input id="playSearch" placeholder="Search plays" />
@@ -597,10 +607,10 @@
     </div>
   </div>
   <div id="toast"></div>
-  <script src="plays.js?v=cloud3"></script>
-  <script src="playbook-data.js?v=cloud3"></script>
-  <script src="cloud-config.js?v=cloud3"></script>
-  <script src="cloud.js?v=cloud3"></script>
-  <script src="app.js?v=cloud3"></script>
+  <script src="plays.js?v=cloud4"></script>
+  <script src="playbook-data.js?v=cloud4"></script>
+  <script src="cloud-config.js?v=cloud4"></script>
+  <script src="cloud.js?v=cloud4"></script>
+  <script src="app.js?v=cloud4"></script>
 </body>
 </html>
