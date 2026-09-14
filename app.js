@@ -668,7 +668,7 @@
     if (!el || !state.book) return;
     const total = (state.book.plays || []).length;
     const shown = visibleBookPlays().length;
-    el.textContent = shown === total ? "(" + total + ")" : "(" + shown + " of " + total + ")";
+    el.textContent = shown === total ? String(total) : shown + " of " + total;
   }
 
   function renderList() {
