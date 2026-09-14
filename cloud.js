@@ -82,23 +82,59 @@
     });
   }
 
-  async function pull() {
+  function decodeB64(s) {
+    const bin = atob(String(s || "").replace(/\n/g, ""));
+    try {
+      return decodeURIComponent(escape(bin));
+    } catch (e) {
+      return bin;
+    }
+  }
+
+  async function pullFromApi() {
     const c = cfg();
     if (!c || !c.owner || !c.repo || !c.path) return null;
+    const headers = { Accept: "application/vnd.github+json" };
+    if (c.token) headers.Authorization = "Bearer " + c.token;
+    const r = await fetch(
+      api + "/repos/" + c.owner + "/" + c.repo + "/contents/" + c.path,
+      { headers: headers, cache: "no-store" }
+    );
+    if (!r.ok) return null;
+    const meta = await r.json();
+    if (meta && meta.sha) window.RaidersCloud.sha = meta.sha;
+    const book = JSON.parse(decodeB64(meta.content));
+    if (!book || !Array.isArray(book.plays)) return null;
+    return book;
+  }
+
+  async function pullFromRaw() {
+    const c = cfg();
+    const path = (c && c.path) || "playbook.json";
+    const owner = (c && c.owner) || "chat-blip";
+    const repo = (c && c.repo) || "raiders-play-designer";
+    const urls = [
+      "https://raw.githubusercontent.com/" + owner + "/" + repo + "/main/" + path + "?t=" + Date.now(),
+      "playbook.json?t=" + Date.now(),
+    ];
+    for (let i = 0; i < urls.length; i++) {
+      try {
+        const r = await fetch(urls[i], { cache: "no-store" });
+        if (!r.ok) continue;
+        const book = await r.json();
+        if (book && Array.isArray(book.plays)) return book;
+      } catch (e) {}
+    }
+    return null;
+  }
+
+  async function pull() {
     try {
-      const headers = { Accept: "application/vnd.github+json" };
-      if (c.token) headers.Authorization = "Bearer " + c.token;
-      const r = await fetch(
-        api + "/repos/" + c.owner + "/" + c.repo + "/contents/" + c.path,
-        { headers: headers, cache: "no-store" }
-      );
-      if (!r.ok) return null;
-      const meta = await r.json();
-      if (meta && meta.sha) window.RaidersCloud.sha = meta.sha;
-      const raw = atob(String(meta.content || "").replace(/\n/g, ""));
-      const book = JSON.parse(raw);
-      if (!book || !Array.isArray(book.plays)) return null;
-      return book;
+      const fromApi = await pullFromApi();
+      if (fromApi) return fromApi;
+    } catch (e) {}
+    try {
+      return await pullFromRaw();
     } catch (e) {
       return null;
     }

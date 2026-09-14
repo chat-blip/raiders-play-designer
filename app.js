@@ -204,13 +204,8 @@
     const local = load();
     const cloud = window.RaidersCloud ? await window.RaidersCloud.pull() : null;
     if (bookOk(cloud)) {
-      const cAt = cloud.exportedAt || 0;
-      const lAt = (local && local.exportedAt) || 0;
-      if (!bookOk(local) || cAt >= lAt) {
-        ensureSets(cloud);
-        return cloud;
-      }
-      state.needCloudPush = true;
+      ensureSets(cloud);
+      return cloud;
     }
     ensureSets(local);
     return local;
