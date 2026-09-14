@@ -117,14 +117,6 @@
         P("A", "A", "off", CX + 58 * s, LOS + 128),
       ];
     }
-    if (kind === "batman") {
-      const s = teSide === "left" ? -1 : 1;
-      return [
-        P("QB", "QB", "off", CX, LOS + 48),
-        P("B", "B", "off", CX - 70 * s, LOS + 142),
-        P("A", "A", "off", CX + 70 * s, LOS + 142),
-      ];
-    }
     return [
       P("QB", "QB", "off", CX, LOS + 48),
       P("B", "B", "off", CX, LOS + 108),
@@ -133,16 +125,6 @@
   }
 
   function receivers(style, teSide) {
-    if (style === "batman") {
-      const s = teSide === "right" ? 1 : -1;
-      const lt = CX - 2 * GAP;
-      const rt = CX + 2 * GAP;
-      const yx = teSide === "right" ? rt + 50 : lt - 50;
-      return [
-        P("X", "X", "off", (teSide === "right" ? lt : rt) - 50 * s, LOS + 34),
-        P("Z", "Z", "off", yx + 48 * s, LOS + 34),
-      ];
-    }
     if (style === "twins") {
       if (teSide === "right") {
         return [P("X", "X", "off", 150, LOS + 8), P("Z", "Z", "off", 230, LOS + 8)];
@@ -160,16 +142,38 @@
     "I Left": { family: "I-formation", te: "left", backs: "under", rec: "split" },
     "Split Right": { family: "Split formation", te: "right", backs: "split", rec: "split" },
     "Split Left": { family: "Split formation", te: "left", backs: "split", rec: "split" },
-    "Batman Right": { family: "Batman formation", te: "right", backs: "batman", rec: "batman" },
-    "Batman Left": { family: "Batman formation", te: "left", backs: "batman", rec: "batman" },
+    "Batman Right": { family: "Batman formation", te: "right", backs: "batman" },
+    "Batman Left": { family: "Batman formation", te: "left", backs: "batman" },
     "QIP I Right": { family: "QIP formation", te: "right", backs: "pistol", rec: "twins" },
     "QIP I Left": { family: "QIP formation", te: "left", backs: "pistol", rec: "twins" },
     "ZIP I Right": { family: "ZIP formation", te: "right", backs: "under", rec: "split" },
     "ZIP I Left": { family: "ZIP formation", te: "left", backs: "under", rec: "split" },
   };
 
+  function batmanOffense(teSide) {
+    function mx(x) {
+      return teSide === "right" ? x : 2 * CX - x;
+    }
+    return [
+      P("LT", "LT", "off", 508, 338),
+      P("LG", "LG", "off", 554, 338),
+      P("C", "C", "off", 600, 338),
+      P("RG", "RG", "off", 646, 338),
+      P("RT", "RT", "off", 692, 338),
+      P("Y", "Y", "off", mx(742), 338),
+      P("QB", "QB", "off", 600, 386),
+      P("B", "B", "off", 600, 446),
+      P("A", "A", "off", 600, 510),
+      P("X", "X", "off", mx(459), 336),
+      P("Z", "Z", "off", mx(785), 376),
+    ];
+  }
+
   function formationPlayers(name, defName) {
     const f = FORMATIONS[name] || FORMATIONS["I Right"];
+    if (f.backs === "batman") {
+      return batmanOffense(f.te).concat(defensePlayers(defName || "4-4 Base", f.te));
+    }
     return [
       ...oLine(f.te),
       ...backs(f.backs, f.te),
