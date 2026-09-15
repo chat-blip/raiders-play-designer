@@ -169,17 +169,45 @@
     ];
   }
 
+  function pinOLine(players) {
+    const spots = {
+      LT: { x: CX - 2 * GAP, y: LOS, label: "LT" },
+      LG: { x: CX - GAP, y: LOS, label: "LG" },
+      C: { x: CX, y: LOS, label: "C" },
+      RG: { x: CX + GAP, y: LOS, label: "RG" },
+      RT: { x: CX + 2 * GAP, y: LOS, label: "RT" },
+    };
+    (players || []).forEach(function (p) {
+      if (!p || p.side !== "off") return;
+      const s = spots[p.id] || spots[p.label];
+      if (!s) return;
+      p.x = s.x;
+      p.y = s.y;
+      p.label = s.label;
+    });
+    return players;
+  }
+
+  function isOLine(p) {
+    if (!p) return false;
+    return p.id === "LT" || p.id === "LG" || p.id === "C" || p.id === "RG" || p.id === "RT" ||
+      p.label === "LT" || p.label === "LG" || p.label === "C" || p.label === "RG" || p.label === "RT";
+  }
+
   function formationPlayers(name, defName) {
     const f = FORMATIONS[name] || FORMATIONS["I Right"];
+    let players;
     if (f.backs === "batman") {
-      return batmanOffense(f.te).concat(defensePlayers(defName || "4-4 Base", f.te));
+      players = batmanOffense(f.te).concat(defensePlayers(defName || "4-4 Base", f.te));
+    } else {
+      players = [
+        ...oLine(f.te),
+        ...backs(f.backs, f.te),
+        ...receivers(f.rec, f.te),
+        ...defensePlayers(defName || "4-4 Base", f.te),
+      ];
     }
-    return [
-      ...oLine(f.te),
-      ...backs(f.backs, f.te),
-      ...receivers(f.rec, f.te),
-      ...defensePlayers(defName || "4-4 Base", f.te),
-    ];
+    return pinOLine(players);
   }
 
   function findP(players, id) {
@@ -466,16 +494,17 @@
     copy.id = uid("play");
     copy.formation = copy.formation.replace("Right", "¤").replace("Left", "Right").replace("¤", "Left");
     copy.name = copy.name.replace(/Left/g, "¤").replace(/Right/g, "Left").replace(/¤/g, "Right");
-    const labelSwap = { LT: "RT", RT: "LT", LG: "RG", RG: "LG" };
     copy.players.forEach((p) => {
+      if (p.side === "off" && isOLine(p)) return;
       p.x = 2 * CX - p.x;
-      if (labelSwap[p.label]) p.label = labelSwap[p.label];
     });
     copy.assignments.forEach((a) => {
+      if (a.from === "LT" || a.from === "LG" || a.from === "C" || a.from === "RG" || a.from === "RT") return;
       a.points.forEach((pt) => {
         pt.x = 2 * CX - pt.x;
       });
     });
+    pinOLine(copy.players);
     return copy;
   }
 

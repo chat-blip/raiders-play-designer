@@ -1709,7 +1709,7 @@
     });
     p.players = fresh.map((pl) => {
       const old = oldBy[pl.id];
-      return old ? Object.assign(pl, { fill: old.fill, label: old.label, who: old.who }) : pl;
+      return old ? Object.assign(pl, { fill: old.fill, who: old.who }) : pl;
     });
     p.formation = name;
     p.family = (RaidersPlays.FORMATIONS[name] || {}).family || "";
