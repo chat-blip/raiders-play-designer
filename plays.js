@@ -12,6 +12,11 @@
     return { id, label, side, x, y, fill: fill || "white" };
   }
 
+  function resolveDefName(name) {
+    if (name === "6-2 Base" || name === "6-2 Bear") return "6-2";
+    return name;
+  }
+
   function markDefenseLabels(players, teSide) {
     const strong = (players || []).find(function (p) {
       return p && p.id === "dS";
@@ -78,37 +83,25 @@
         P("dCB2", "CB", "def", 990, LOS - 72),
         P("dFS", "FS", "def", CX, LOS - 205),
       ],
-      "6-2 Base": [
-        P("dDE1", "DE", "def", CX - 168, dl),
-        P("dDT1", "DT", "def", CX - 100, dl),
-        P("dNG1", "NG", "def", CX - 34, dl),
-        P("dNG2", "NG", "def", CX + 34, dl),
-        P("dDT2", "DT", "def", CX + 100, dl),
-        P("dDE2", "DE", "def", CX + 168, dl),
-        P("dM1", "M", "def", CX - 78, lb),
-        P("dM2", "M", "def", CX + 78, lb),
+      "6-2": [
+        P("dDE1", "DE", "def", 426, dl),
+        P("dDT1", "DT", "def", 506, dl),
+        P("dNT", "NT", "def", CX - 24 * s, dl),
+        P("dM1", "MLB", "def", CX + 36 * s, dl),
+        P("dDT2", "DT", "def", 698, dl),
+        P("dDE2", "DE", "def", 762, dl),
+        P("dW", "W", "def", CX - 101 * s, lb),
+        P("dS", "S", "def", CX + 101 * s, lb),
         P("dCB1", "CB", "def", 168, LOS - 70),
         P("dCB2", "CB", "def", 1032, LOS - 70),
         P("dFS", "FS", "def", CX, LOS - 210),
       ],
-      "6-2 Bear": [
-        P("dDE1", "DE", "def", CX - 120, dl + 2),
-        P("dDT1", "DT", "def", CX - 74, dl + 2),
-        P("dNG1", "NG", "def", CX - 28, dl + 2),
-        P("dNG2", "NG", "def", CX + 28, dl + 2),
-        P("dDT2", "DT", "def", CX + 74, dl + 2),
-        P("dDE2", "DE", "def", CX + 120, dl + 2),
-        P("dM1", "M", "def", CX - 52, lb - 8),
-        P("dM2", "M", "def", CX + 52, lb - 8),
-        P("dCB1", "CB", "def", 210, LOS - 72),
-        P("dCB2", "CB", "def", 990, LOS - 72),
-        P("dFS", "FS", "def", CX, LOS - 205),
-      ],
     };
-    return markDefenseLabels(layouts[name] || layouts["4-4 Base"], teSide);
+    const key = resolveDefName(name);
+    return markDefenseLabels(layouts[key] || layouts["4-4 Base"], teSide);
   }
 
-  const DEF_FORMATIONS = ["4-4 Base", "5-3 Base", "5-3 Bear", "6-2 Base", "6-2 Bear"];
+  const DEF_FORMATIONS = ["4-4 Base", "5-3 Base", "5-3 Bear", "6-2"];
 
   function oLine(teSide) {
     const line = [
@@ -535,6 +528,7 @@
     LOS,
     FORMATIONS,
     DEF_FORMATIONS,
+    resolveDefName,
     formationPlayers,
     defensePlayers,
     buildSeedPlaybook,

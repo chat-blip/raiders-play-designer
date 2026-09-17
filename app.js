@@ -916,7 +916,8 @@
     $("numInput").value = p.number;
     $("nameInput").value = p.name;
     $("formSelect").value = p.formation;
-    $("defSelect").value = p.defense || "4-4 Base";
+    const storedDef = p.defense || "4-4 Base";
+    $("defSelect").value = RaidersPlays.resolveDefName ? RaidersPlays.resolveDefName(storedDef) : storedDef;
     $("typeSelect").value = p.type === "defense" || p.type === "pass" ? p.type : "run";
     $("notes").value = p.notes || "";
     $("printNum").textContent = p.number;
