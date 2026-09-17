@@ -10,6 +10,8 @@
   const VW = 1200;
   const VH = 720;
   const R = 20;
+  const DEF_S = 18;
+  const DEF_S_BIG = 25;
   const ROSTER_SPOTS = ["QB", "A", "B", "X", "Y", "Z", "LT", "LG", "C", "RG", "RT"];
 
   const state = {
@@ -572,15 +574,21 @@
     return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
   }
 
+  function defGlyph(p) {
+    return isDefensePlay(p) ? DEF_S_BIG : DEF_S;
+  }
+
   function hitPlayer(pt, players) {
     let best = null;
-    let bestD = R + 6;
-    players.forEach((p) => {
-      if (state.hideDef && p.side === "def") return;
-      const d = dist(pt, p);
-      if (d < bestD) {
+    let bestD = 1e9;
+    const bigDef = isDefensePlay(play());
+    players.forEach((pl) => {
+      if (state.hideDef && pl.side === "def") return;
+      const d = dist(pt, pl);
+      const lim = pl.side === "def" ? (bigDef ? DEF_S_BIG + 8 : DEF_S + 6) : R + 6;
+      if (d <= lim && d < bestD) {
         bestD = d;
-        best = p;
+        best = pl;
       }
     });
     return best;
@@ -1270,6 +1278,13 @@
 
   function paintPlay(p, g, opts) {
     const interactive = !!(opts && opts.interactive);
+    const bigDef = isDefensePlay(p);
+    const cls = (g.getAttribute("class") || "").split(/\s+/).filter(function (c) {
+      return c && c !== "defense-play";
+    });
+    if (bigDef) cls.push("defense-play");
+    if (cls.length) g.setAttribute("class", cls.join(" "));
+    else g.removeAttribute("class");
     paintFieldMarks(g);
     const assigns = p.assignments || [];
     assigns.forEach((a) => {
@@ -1338,7 +1353,7 @@
       wrap.dataset.id = pl.id;
       if (pl.side === "def") {
         const tri = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-        const s = 18;
+        const s = defGlyph(p);
         tri.setAttribute(
           "points",
           pl.x + "," + (pl.y - s) + " " + (pl.x - s * 1.05) + "," + (pl.y + s * 0.75) + " " + (pl.x + s * 1.05) + "," + (pl.y + s * 0.75)
@@ -1354,7 +1369,7 @@
       const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
       t.setAttribute("class", "pos");
       t.setAttribute("x", pl.x);
-      t.setAttribute("y", who ? (pl.side === "off" ? pl.y - 3 : pl.y - 2) : pl.y + 5);
+      t.setAttribute("y", who ? (pl.side === "off" ? pl.y - 3 : pl.y - 2) : pl.y + (bigDef && pl.side === "def" ? 7 : 5));
       t.setAttribute("text-anchor", "middle");
       t.textContent = pl.label;
       wrap.appendChild(t);
@@ -1362,7 +1377,7 @@
         const w = document.createElementNS("http://www.w3.org/2000/svg", "text");
         w.setAttribute("class", "who");
         w.setAttribute("x", pl.x);
-        w.setAttribute("y", pl.y + 11);
+        w.setAttribute("y", pl.y + (bigDef && pl.side === "def" ? 14 : 11));
         w.setAttribute("text-anchor", "middle");
         w.textContent = who;
         wrap.appendChild(w);
