@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <meta name="robots" content="noindex, nofollow" />
   <title>Raiders Play Designer</title>
   <style>
@@ -390,6 +392,12 @@
       background: var(--navy); color: #fff;
       padding: 10px 12px; font-weight: 750;
     }
+    #pinGate button.ghost-pin {
+      margin-top: 8px;
+      background: #fff;
+      color: var(--navy);
+      border: 1px solid #c9d3df;
+    }
     #pinErr { min-height: 18px; margin: 8px 0 0; font-size: 12px; color: var(--red); }
     #toast {
       position: fixed; bottom: 16px; right: 16px; background: var(--navy); color: #fff;
@@ -526,6 +534,7 @@
   <div class="app">
     <header class="top">
       <div class="brand">RAIDERS <span>Play Designer · 4th Grade</span></div>
+      <button type="button" id="btnSignOut" class="ghost" title="Forget this device and load a fresh copy of the designer">Sign out</button>
       <div class="spacer"></div>
       <button type="button" id="btnUndo" class="ghost">Undo</button>
       <button type="button" id="btnRedo" class="ghost">Redo</button>
@@ -680,6 +689,7 @@
       <p>Play designer · enter the coach PIN</p>
       <input id="pinInput" type="password" autocomplete="current-password" placeholder="PIN" />
       <button type="submit">Open playbook</button>
+      <button type="button" id="btnFreshReload" class="ghost-pin">Load a fresh copy</button>
       <p id="pinErr"></p>
     </form>
   </div>
@@ -699,10 +709,10 @@
     </div>
   </div>
   <div id="toast"></div>
-  <script src="plays.js?v=cloud15"></script>
-  <script src="playbook-data.js?v=cloud15"></script>
-  <script src="cloud-config.js?v=cloud15"></script>
-  <script src="cloud.js?v=cloud15"></script>
-  <script src="app.js?v=cloud15"></script>
+  <script src="plays.js?v=cloud16"></script>
+  <script src="playbook-data.js?v=cloud16"></script>
+  <script src="cloud-config.js?v=cloud16"></script>
+  <script src="cloud.js?v=cloud16"></script>
+  <script src="app.js?v=cloud16"></script>
 </body>
 </html>

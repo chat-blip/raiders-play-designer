@@ -33,6 +33,25 @@
     }
   }
 
+  function reloadFresh() {
+    try {
+      if (window.caches && caches.keys) {
+        caches.keys().then(function (keys) {
+          keys.forEach(function (k) { caches.delete(k); });
+        });
+      }
+    } catch (e) {}
+    const next = location.pathname + "?fresh=" + Date.now();
+    location.replace(next);
+  }
+
+  function signOut() {
+    try {
+      localStorage.removeItem(UNLOCK);
+    } catch (e) {}
+    reloadFresh();
+  }
+
   function showGate() {
     const gate = document.getElementById("pinGate");
     const app = document.querySelector(".app");
@@ -190,7 +209,30 @@
     hasPin: hasPin,
     canPush: canPush,
     unlock: unlock,
+    signOut: signOut,
+    reloadFresh: reloadFresh,
     pull: pull,
     push: push,
   };
+
+  function wireFresh() {
+    const fresh = document.getElementById("btnFreshReload");
+    if (fresh && !fresh.dataset.wired) {
+      fresh.dataset.wired = "1";
+      fresh.addEventListener("click", function (e) {
+        e.preventDefault();
+        reloadFresh();
+      });
+    }
+    const out = document.getElementById("btnSignOut");
+    if (out && !out.dataset.wired) {
+      out.dataset.wired = "1";
+      out.addEventListener("click", function (e) {
+        e.preventDefault();
+        signOut();
+      });
+    }
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", wireFresh);
+  else wireFresh();
 })();
