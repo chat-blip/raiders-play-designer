@@ -85,6 +85,14 @@
     if (wrap) wrap.hidden = def;
     const lab = $("defFormLabel");
     if (lab) lab.textContent = def ? "Defense formation" : "Defense";
+    const hint = $("kidsHint");
+    if (hint) {
+      hint.textContent = def
+        ? "Names on this play only. Apply copies them to every defense play."
+        : "Names on this play only. Apply copies them to every offensive play.";
+    }
+    const btn = $("btnApplyKids");
+    if (btn) btn.textContent = def ? "Apply to all defense plays" : "Apply to all plays";
   }
 
   function commitPlayFields() {
@@ -290,13 +298,51 @@
     return playObj.kids;
   }
 
-  function setKidName(playObj, label, raw) {
+  function defCX() {
+    return (RaidersPlays && RaidersPlays.CX) || 600;
+  }
+
+  function defBand(pl) {
+    const lab = pl && pl.label;
+    if (lab === "FS" || lab === "SS" || lab === "SC" || lab === "WC" || lab === "CB") return 2;
+    if (lab === "W" || lab === "M" || lab === "S" || lab === "LB") return 1;
+    return 0;
+  }
+
+  function rosterEntries(p) {
+    const playObj = p || play();
+    if (isDefensePlay(playObj)) {
+      return (playObj.players || [])
+        .filter(function (pl) { return pl.side === "def"; })
+        .slice()
+        .sort(function (a, b) {
+          const d = defBand(a) - defBand(b);
+          return d || a.x - b.x || a.y - b.y;
+        })
+        .map(function (pl) { return { key: pl.id, label: pl.label }; });
+    }
+    return ROSTER_SPOTS.map(function (spot) { return { key: spot, label: spot }; });
+  }
+
+  function kidKey(pl, playObj) {
+    const p = playObj || play();
+    if (isDefensePlay(p) && pl && pl.side === "def") return pl.id;
+    return pl.label;
+  }
+
+  function setKidName(playObj, key, raw) {
     const kids = playKids(playObj);
     const v = String(raw || "").trim().slice(0, 4).toUpperCase();
-    if (v) kids[label] = v;
-    else delete kids[label];
+    if (v) kids[key] = v;
+    else delete kids[key];
+    const byId = (playObj.players || []).find(function (pl) { return pl.id === key; });
+    if (byId) {
+      if (v) byId.who = v;
+      else delete byId.who;
+      return v;
+    }
     (playObj.players || []).forEach((pl) => {
-      if (pl.label !== label) return;
+      if (pl.label !== key) return;
       if (v) pl.who = v;
       else delete pl.who;
     });
@@ -305,11 +351,59 @@
 
   function playerWho(pl, playObj) {
     if (!pl) return "";
-    const kids = playKids(playObj || play());
-    const fromKids = kids[pl.label];
+    const p = playObj || play();
+    if (isDefensePlay(p) && pl.side === "off") return "";
+    const kids = playKids(p);
+    const key = kidKey(pl, p);
+    const fromKids = kids[key] || (key !== pl.label ? kids[pl.label] : "");
     if (fromKids) return String(fromKids).trim().slice(0, 4).toUpperCase();
     const custom = pl.who != null ? String(pl.who).trim() : "";
     return custom ? custom.slice(0, 4).toUpperCase() : "";
+  }
+
+  function defSide(pl) {
+    return pl.x < defCX() ? "L" : "R";
+  }
+
+  function matchDefPack(pl, pack) {
+    if (!pl || !pack || !pack.length) return "";
+    let hit = pack.find(function (s) { return s.id === pl.id && s.who; });
+    if (hit) return hit.who;
+    const same = pack.filter(function (s) { return s.who && s.label === pl.label; });
+    if (same.length === 1) return same[0].who;
+    hit = same.find(function (s) { return defSide(s) === defSide(pl); });
+    if (hit) return hit.who;
+    if (pl.label === "CB" || pl.label === "SC" || pl.label === "WC") {
+      hit = pack.find(function (s) {
+        return s.who && defSide(s) === defSide(pl) && (s.label === "CB" || s.label === "SC" || s.label === "WC");
+      });
+      if (hit) return hit.who;
+    }
+    return "";
+  }
+
+  function captureDefPack(p) {
+    return (p.players || []).filter(function (pl) { return pl.side === "def"; }).map(function (pl) {
+      return { id: pl.id, label: pl.label, x: pl.x, who: playerWho(pl, p) };
+    }).filter(function (x) { return x.who; });
+  }
+
+  function applyDefKidsFromPack(dest, pack) {
+    const kids = {};
+    (dest.players || []).forEach(function (pl) {
+      if (pl.side !== "def") {
+        delete pl.who;
+        return;
+      }
+      const v = matchDefPack(pl, pack);
+      if (v) {
+        kids[pl.id] = v;
+        pl.who = v;
+      } else {
+        delete pl.who;
+      }
+    });
+    dest.kids = kids;
   }
 
   function activeSet() {
@@ -837,18 +931,22 @@
   function renderRoster() {
     const box = $("rosterGrid");
     if (!box) return;
-    const kids = playKids(play());
-    if (!box.dataset.ready) {
-      box.dataset.ready = "1";
-      ROSTER_SPOTS.forEach((spot) => {
+    const p = play();
+    const entries = rosterEntries(p);
+    const kids = playKids(p);
+    const mode = (isDefensePlay(p) ? "def:" : "off:") + entries.map(function (e) { return e.key + ":" + e.label; }).join(",");
+    if (box.dataset.ready !== mode) {
+      box.innerHTML = "";
+      box.dataset.ready = mode;
+      entries.forEach((entry) => {
         const lab = document.createElement("label");
-        lab.textContent = spot;
+        lab.textContent = entry.label;
         const inp = document.createElement("input");
         inp.maxLength = 3;
-        inp.dataset.spot = spot;
-        inp.setAttribute("aria-label", spot + " initials");
+        inp.dataset.spot = entry.key;
+        inp.setAttribute("aria-label", entry.label + " initials");
         inp.addEventListener("input", () => {
-          setKidName(play(), spot, inp.value);
+          setKidName(play(), inp.dataset.spot, inp.value);
           scheduleSave();
           renderField();
         });
@@ -887,15 +985,37 @@
         setKidName(cur, inp.dataset.spot, inp.value);
       });
     }
-    const src = Object.assign({}, playKids(cur));
-    const named = Object.keys(src).filter((k) => src[k]);
+    const defense = isDefensePlay(cur);
+    const targets = (state.book.plays || []).filter(function (p) {
+      return isDefensePlay(p) === defense;
+    });
+    if (defense) {
+      const pack = captureDefPack(cur);
+      if (!pack.length) {
+        toast("Type initials first, then Apply");
+        return;
+      }
+      targets.forEach(function (p) { applyDefKidsFromPack(p, pack); });
+      state.book.defRoster = pack;
+      save();
+      render();
+      toast("Copied this play's names to all " + targets.length + " defense plays");
+      return;
+    }
+    const src = {};
+    rosterEntries(cur).forEach(function (entry) {
+      const v = playKids(cur)[entry.key];
+      if (v) src[entry.key] = v;
+    });
+    const named = Object.keys(src);
     if (!named.length) {
       toast("Type initials first, then Apply");
       return;
     }
-    (state.book.plays || []).forEach((p) => {
+    targets.forEach((p) => {
       p.kids = Object.assign({}, src);
       (p.players || []).forEach((pl) => {
+        if (pl.side === "def") return;
         if (src[pl.label]) pl.who = src[pl.label];
         else delete pl.who;
       });
@@ -903,7 +1023,7 @@
     state.book.roster = Object.assign({}, src);
     save();
     render();
-    toast("Copied this play's names to all " + (state.book.plays || []).length + " plays");
+    toast("Copied this play's names to all " + targets.length + " offensive plays");
   }
 
   function renderSetList() {
@@ -1733,7 +1853,7 @@
       const next = window.prompt("Kid initials under " + pl.label + " (this play only)", playerWho(pl) || "");
       if (next == null) return;
       pushUndo();
-      setKidName(play(), pl.label, next);
+      setKidName(play(), kidKey(pl), next);
       render();
     }
   }
@@ -1773,6 +1893,7 @@
     const next = String(Math.max(0, ...nums) + 1).padStart(2, "0");
     const type = cur && cur.type === "defense" ? "defense" : (cur && cur.type === "pass" ? "pass" : "run");
     const p = RaidersPlays.blankPlay(formation, next, type === "defense" ? "New Defense" : "New Play", type, $("defSelect").value || "4-4 Base");
+    if (type === "defense" && state.book.defRoster) applyDefKidsFromPack(p, state.book.defRoster);
     pushBookUndo();
     state.book.plays.push(p);
     selectPlay(p.id);
@@ -1859,6 +1980,7 @@
     pushUndo();
     const te = ((RaidersPlays.FORMATIONS[p.formation] || {}).te) || "right";
     const def = RaidersPlays.defensePlayers(name, te);
+    const pack = isDefensePlay(p) ? captureDefPack(p) : null;
     const keep = p.players.filter((pl) => pl.side !== "def");
     const ids = {};
     keep.forEach((pl) => {
@@ -1870,6 +1992,7 @@
     p.players = keep.concat(def);
     p.assignments = (p.assignments || []).filter((a) => ids[a.from]);
     p.defense = name;
+    if (pack) applyDefKidsFromPack(p, pack);
     render();
   }
 
@@ -2341,7 +2464,7 @@
           state.fieldEdit = "whoInput";
           pushUndo();
         }
-        setKidName(play(), pl.label, whoInput.value);
+        setKidName(play(), kidKey(pl), whoInput.value);
         scheduleSave();
         renderField();
         renderRoster();

@@ -422,7 +422,7 @@
     .player.def text { fill: #fff; font-size: 9px; }
     .player.def text.who { font-size: 8.5px; fill: #c9a227; }
     .roster {
-      display: grid; grid-template-columns: 22px 1fr 22px 1fr; gap: 4px 6px;
+      display: grid; grid-template-columns: 26px 1fr 26px 1fr; gap: 4px 6px;
       align-items: center; margin: 0 0 10px;
     }
     .roster label { font-size: 11px; font-weight: 800; color: var(--text); }
@@ -653,7 +653,7 @@
         <div class="field-label" id="defFormLabel">Defense</div>
         <select id="defSelect" style="margin-bottom:12px"></select>
         <h2>Kids</h2>
-        <p class="field-label" style="text-transform:none;letter-spacing:0;font-size:11px;margin-bottom:6px">Names on this play only. Apply copies them to every play.</p>
+        <p class="field-label" id="kidsHint" style="text-transform:none;letter-spacing:0;font-size:11px;margin-bottom:6px">Names on this play only. Apply copies them to every play.</p>
         <div class="roster" id="rosterGrid"></div>
         <button type="button" class="full" id="btnApplyKids" style="width:100%;margin:0 0 10px">Apply to all plays</button>
         <div class="who-row" id="whoRow" hidden>
@@ -717,10 +717,10 @@
     </div>
   </div>
   <div id="toast"></div>
-  <script src="plays.js?v=cloud19"></script>
-  <script src="playbook-data.js?v=cloud19"></script>
-  <script src="cloud-config.js?v=cloud19"></script>
-  <script src="cloud.js?v=cloud19"></script>
-  <script src="app.js?v=cloud19"></script>
+  <script src="plays.js?v=cloud20"></script>
+  <script src="playbook-data.js?v=cloud20"></script>
+  <script src="cloud-config.js?v=cloud20"></script>
+  <script src="cloud.js?v=cloud20"></script>
+  <script src="app.js?v=cloud20"></script>
 </body>
 </html>
