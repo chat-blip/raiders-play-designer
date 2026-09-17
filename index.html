@@ -204,13 +204,54 @@
       background: #fff; color: var(--navy); font-size: 40px; line-height: 1.1; padding: 6px 12px; font-weight: 900;
     }
     .print-num.pass { color: var(--red); }
-    .sheet-body { flex: 1; min-height: 360px; background: #fff; }
+    .sheet-body { flex: 1; min-height: 360px; background: #fff; position: relative; }
     svg#field { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; -webkit-user-select: none; user-select: none; }
     svg#field text { pointer-events: none; }
     .hint { padding: 6px 14px; font-size: 12px; color: var(--muted); background: #f3f6f9; border-top: 1px solid #e4ebf2; }
+    .touch-bar {
+      display: none;
+      position: absolute;
+      right: 14px;
+      bottom: 14px;
+      left: auto;
+      z-index: 8;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 0;
+      background: transparent;
+      border: 0;
+      pointer-events: none;
+    }
+    .touch-bar.show { display: flex; }
+    .touch-bar button {
+      pointer-events: auto;
+      min-height: 48px;
+      min-width: 132px;
+      padding: 10px 20px;
+      border-radius: 10px;
+      border: 0;
+      font-size: 16px;
+      font-weight: 800;
+      touch-action: manipulation;
+      box-shadow: 0 4px 16px rgba(11, 31, 58, 0.28);
+    }
+    .touch-bar .danger, .tool-grid #btnDelete {
+      background: var(--red);
+      color: #fff;
+      border-color: var(--red);
+    }
+    .touch-bar .ok { background: var(--navy); color: #fff; }
+    .touch-bar .ghost {
+      background: #fff;
+      color: var(--navy);
+      border: 2px solid var(--navy);
+    }
     .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
     .tool-grid button, .tools .full {
       border: 1px solid #c9d3df; background: #fff; border-radius: 6px; padding: 8px 6px; font-size: 12px; font-weight: 650;
+      touch-action: manipulation;
     }
     .tool-grid button.on { background: var(--navy); color: #fff; border-color: var(--navy); }
     .check { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 8px 0 12px; }
@@ -276,7 +317,7 @@
       white-space: nowrap;
     }
     body.present .top, body.present .sidebar, body.present .tools,
-    body.present .hint, body.present .col-resizer, body.present .handle {
+    body.present .hint, body.present .touch-bar, body.present .col-resizer, body.present .handle {
       display: none !important;
     }
     body.present, body.present .app, body.present .layout, body.present .stage {
@@ -400,7 +441,7 @@
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
-      .top, .sidebar, .tools, .hint, #toast, .handle, .col-resizer, .present-dock, .present-sketch, #pinGate { display: none !important; }
+      .top, .sidebar, .tools, .hint, .touch-bar, #toast, .handle, .col-resizer, .present-dock, .present-sketch, #pinGate { display: none !important; }
       .app, .layout, .stage {
         display: block;
         width: 100%;
@@ -547,6 +588,11 @@
               <rect width="1200" height="720" fill="#fff" />
               <g id="world"></g>
             </svg>
+            <div class="touch-bar" id="touchBar" aria-live="polite">
+              <button type="button" class="ok" id="btnTouchDone">Done</button>
+              <button type="button" class="ghost" id="btnTouchCancel">Cancel</button>
+              <button type="button" class="danger" id="btnTouchDelete">Delete</button>
+            </div>
           </div>
           <div class="sheet-foot">
             <svg class="band" aria-hidden="true" preserveAspectRatio="none" viewBox="0 0 100 52">
@@ -594,7 +640,7 @@
           <button type="button" data-tool="block">Block (B)</button>
           <button type="button" data-tool="motion">Motion (M)</button>
           <button type="button" data-tool="ball">Ball path (Q)</button>
-          <button type="button" id="btnDelete">Delete</button>
+          <button type="button" id="btnDelete">Delete selected</button>
           <button type="button" data-tool="paintRed">Ball carrier</button>
           <button type="button" data-tool="paintGold">Primary</button>
           <button type="button" data-tool="addOff">+ Offense</button>
@@ -609,7 +655,8 @@
           <b>Click a line</b>, then drag the solid dots — or the <b>hollow middle dot</b> to curve it.<br />
           Keep <b>Curve lines</b> on (like ball path). Turn it off for sharp outs.<br />
           <b>Motion then block:</b> Motion (M) on B, Enter, then Block (B) and click B again — the T-bar starts at the dashed end.<br />
-          <b>Right-click</b> or <b>Enter</b> finishes a drawing.<br />
+          <b>Tap a line</b>, then <b>Delete</b> under the field (or the Delete key).<br />
+          <b>Done</b> or <b>Enter</b> finishes a drawing.<br />
           <b>Double-click</b> a circle to put initials under the position.<br />
           <b>↑ ↓</b> next play · <b>Ctrl+Z</b> undo · <b>C</b> curve · <b>F</b> flip · <b>Full screen</b> for the kids · saves to this site.
         </p>
@@ -641,10 +688,10 @@
     </div>
   </div>
   <div id="toast"></div>
-  <script src="plays.js?v=cloud13"></script>
-  <script src="playbook-data.js?v=cloud13"></script>
-  <script src="cloud-config.js?v=cloud13"></script>
-  <script src="cloud.js?v=cloud13"></script>
-  <script src="app.js?v=cloud13"></script>
+  <script src="plays.js?v=cloud14"></script>
+  <script src="playbook-data.js?v=cloud14"></script>
+  <script src="cloud-config.js?v=cloud14"></script>
+  <script src="cloud.js?v=cloud14"></script>
+  <script src="app.js?v=cloud14"></script>
 </body>
 </html>

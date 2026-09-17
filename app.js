@@ -1056,9 +1056,9 @@
   function renderHint() {
     const hints = {
       select: "Drag players or lines. Double-click a circle to put initials under the position. Click a line, then drag the solid dots — or the hollow middle dot to curve it.",
-      route: "Click a player, then click bend spots on the field. Enter to finish. Keep Curve on for a smooth arc.",
-      block: "Click B to block. If he already has motion, the T-bar starts where the dashed line ends.",
-      motion: "Click B, then click where he motions to. Enter to finish. Then switch to Block and click B again — the block starts at the motion spot.",
+      route: "Click a player, then click bend spots on the field. Tap Done to finish. Keep Curve on for a smooth arc.",
+      block: "Click a player to block. If he already has motion, the T-bar starts where the dashed line ends. Tap a block, then Delete to remove it.",
+      motion: "Click a player, then click where he motions to. Tap Done to finish. Then switch to Block and click him again — the block starts at the motion spot.",
       ball: "Click the ball carrier, then click the ball path (blue arrow).",
       paintRed: "Click a player to mark the ball carrier (red).",
       paintGold: "Click a player to mark the primary (gold).",
@@ -1222,6 +1222,53 @@
         });
       }
     }
+    updateTouchBar();
+  }
+
+  function assignDeleteLabel(type) {
+    if (type === "block") return "Delete block";
+    if (type === "motion") return "Delete motion";
+    if (type === "ball") return "Delete ball path";
+    if (type === "route") return "Delete route";
+    return "Delete line";
+  }
+
+  function updateTouchBar() {
+    const bar = $("touchBar");
+    const btnDone = $("btnTouchDone");
+    const btnCancel = $("btnTouchCancel");
+    const btnDel = $("btnTouchDelete");
+    if (!bar || !btnDone || !btnCancel || !btnDel) return;
+    if (state.present) {
+      bar.classList.remove("show");
+      return;
+    }
+    if (state.drawing) {
+      bar.classList.add("show");
+      btnDone.hidden = false;
+      btnCancel.hidden = false;
+      btnDel.hidden = true;
+      return;
+    }
+    if (state.selected && state.selected.kind === "assign") {
+      const a = play().assignments.find((x) => x.id === state.selected.id);
+      bar.classList.add("show");
+      btnDone.hidden = true;
+      btnCancel.hidden = true;
+      btnDel.hidden = false;
+      btnDel.textContent = assignDeleteLabel(a && a.type);
+      return;
+    }
+    if (state.selected && state.selected.kind === "player") {
+      const pl = currentPlayer(state.selected.id);
+      bar.classList.add("show");
+      btnDone.hidden = true;
+      btnCancel.hidden = true;
+      btnDel.hidden = false;
+      btnDel.textContent = pl ? "Remove " + (pl.label || "player") : "Remove player";
+      return;
+    }
+    bar.classList.remove("show");
   }
 
   function playBounds(p) {
@@ -2278,6 +2325,9 @@
     });
     $("btnReset").addEventListener("click", resetSeed);
     $("btnDelete").addEventListener("click", deleteSelected);
+    if ($("btnTouchDelete")) $("btnTouchDelete").addEventListener("click", deleteSelected);
+    if ($("btnTouchDone")) $("btnTouchDone").addEventListener("click", function () { finishDraw(true); });
+    if ($("btnTouchCancel")) $("btnTouchCancel").addEventListener("click", function () { finishDraw(false); });
     $("btnUndo").addEventListener("click", undo);
     $("btnRedo").addEventListener("click", redo);
     if ($("btnPresent")) $("btnPresent").addEventListener("click", togglePresent);
