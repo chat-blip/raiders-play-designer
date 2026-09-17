@@ -1056,10 +1056,10 @@
   function renderHint() {
     const hints = {
       select: "Drag players or lines. Double-click a circle to put initials under the position. Click a line, then drag the solid dots — or the hollow middle dot to curve it.",
-      route: "Click a player, then click bend spots on the field. Tap Done to finish. Keep Curve on for a smooth arc.",
+      route: "Click a player, then click bend spots on the field. Tap Enter to finish the arrow. Keep Curve on for a smooth arc.",
       block: "Click a player to block. If he already has motion, the T-bar starts where the dashed line ends. Tap a block, then Delete to remove it.",
-      motion: "Click a player, then click where he motions to. Tap Done to finish. Then switch to Block and click him again — the block starts at the motion spot.",
-      ball: "Click the ball carrier, then click the ball path (blue arrow).",
+      motion: "Click a player, then click where he motions to. Tap Enter to finish. Then switch to Block and click him again — the block starts at the motion spot.",
+      ball: "Click the ball carrier, then tap the path. When the arrow looks right, tap Enter to lock it in.",
       paintRed: "Click a player to mark the ball carrier (red).",
       paintGold: "Click a player to mark the primary (gold).",
       addOff: "Click the field to add an offensive player.",
@@ -1225,6 +1225,18 @@
     updateTouchBar();
   }
 
+  function enterLabel(type) {
+    if (type === "ball") return "Enter — finish path";
+    if (type === "motion") return "Enter — finish motion";
+    if (type === "route") return "Enter — finish route";
+    if (type === "block") return "Enter — finish block";
+    return "Enter — finish";
+  }
+
+  function finishDrawing() {
+    if (state.drawing) finishDraw(true);
+  }
+
   function assignDeleteLabel(type) {
     if (type === "block") return "Delete block";
     if (type === "motion") return "Delete motion";
@@ -1248,6 +1260,7 @@
       btnDone.hidden = false;
       btnCancel.hidden = false;
       btnDel.hidden = true;
+      btnDone.textContent = enterLabel(state.drawing.type);
       return;
     }
     if (state.selected && state.selected.kind === "assign") {
@@ -2326,7 +2339,8 @@
     $("btnReset").addEventListener("click", resetSeed);
     $("btnDelete").addEventListener("click", deleteSelected);
     if ($("btnTouchDelete")) $("btnTouchDelete").addEventListener("click", deleteSelected);
-    if ($("btnTouchDone")) $("btnTouchDone").addEventListener("click", function () { finishDraw(true); });
+    if ($("btnTouchDone")) $("btnTouchDone").addEventListener("click", finishDrawing);
+    if ($("btnEnter")) $("btnEnter").addEventListener("click", finishDrawing);
     if ($("btnTouchCancel")) $("btnTouchCancel").addEventListener("click", function () { finishDraw(false); });
     $("btnUndo").addEventListener("click", undo);
     $("btnRedo").addEventListener("click", redo);
