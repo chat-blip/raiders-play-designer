@@ -305,7 +305,7 @@
   function defBand(pl) {
     const lab = pl && pl.label;
     if (lab === "FS" || lab === "SS" || lab === "SC" || lab === "WC" || lab === "CB") return 2;
-    if (lab === "W" || lab === "M" || lab === "S" || lab === "LB") return 1;
+    if (lab === "W" || lab === "M" || lab === "S" || lab === "LB" || lab === "WLB" || lab === "MLB" || lab === "SLB") return 1;
     return 0;
   }
 
@@ -365,6 +365,15 @@
     return pl.x < defCX() ? "L" : "R";
   }
 
+  function defFamily(lab) {
+    if (lab === "W" || lab === "WLB") return "WLB";
+    if (lab === "S" || lab === "SLB") return "SLB";
+    if (lab === "M" || lab === "MLB") return "MLB";
+    if (lab === "DE" || lab === "SDE" || lab === "WDE") return "DE";
+    if (lab === "CB" || lab === "SC" || lab === "WC") return "CB";
+    return lab;
+  }
+
   function matchDefPack(pl, pack) {
     if (!pl || !pack || !pack.length) return "";
     let hit = pack.find(function (s) { return s.id === pl.id && s.who; });
@@ -373,12 +382,11 @@
     if (same.length === 1) return same[0].who;
     hit = same.find(function (s) { return defSide(s) === defSide(pl); });
     if (hit) return hit.who;
-    if (pl.label === "CB" || pl.label === "SC" || pl.label === "WC") {
-      hit = pack.find(function (s) {
-        return s.who && defSide(s) === defSide(pl) && (s.label === "CB" || s.label === "SC" || s.label === "WC");
-      });
-      if (hit) return hit.who;
-    }
+    const fam = defFamily(pl.label);
+    const kin = pack.filter(function (s) { return s.who && defFamily(s.label) === fam; });
+    if (kin.length === 1) return kin[0].who;
+    hit = kin.find(function (s) { return defSide(s) === defSide(pl); });
+    if (hit) return hit.who;
     return "";
   }
 

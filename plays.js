@@ -12,14 +12,24 @@
     return { id, label, side, x, y, fill: fill || "white" };
   }
 
-  function markCorners(players, teSide) {
+  function markDefenseLabels(players, teSide) {
     const strong = (players || []).find(function (p) {
       return p && p.id === "dS";
     });
     const strongRight = strong ? strong.x >= CX : teSide !== "left";
     (players || []).forEach(function (p) {
-      if (!p || (p.id !== "dCB1" && p.id !== "dCB2")) return;
-      p.label = (p.x >= CX) === strongRight ? "SC" : "WC";
+      if (!p) return;
+      if (p.id === "dCB1" || p.id === "dCB2") {
+        p.label = (p.x >= CX) === strongRight ? "SC" : "WC";
+      } else if (p.id === "dDE1" || p.id === "dDE2") {
+        p.label = (p.x >= CX) === strongRight ? "SDE" : "WDE";
+      } else if (p.id === "dW") {
+        p.label = "WLB";
+      } else if (p.id === "dS") {
+        p.label = "SLB";
+      } else if (p.id === "dM1" || p.id === "dM2") {
+        p.label = "MLB";
+      }
     });
     return players;
   }
@@ -95,7 +105,7 @@
         P("dFS", "FS", "def", CX, LOS - 205),
       ],
     };
-    return markCorners(layouts[name] || layouts["4-4 Base"], teSide);
+    return markDefenseLabels(layouts[name] || layouts["4-4 Base"], teSide);
   }
 
   const DEF_FORMATIONS = ["4-4 Base", "5-3 Base", "5-3 Bear", "6-2 Base", "6-2 Bear"];
