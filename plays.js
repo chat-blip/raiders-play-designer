@@ -12,6 +12,18 @@
     return { id, label, side, x, y, fill: fill || "white" };
   }
 
+  function markCorners(players, teSide) {
+    const strong = (players || []).find(function (p) {
+      return p && p.id === "dS";
+    });
+    const strongRight = strong ? strong.x >= CX : teSide !== "left";
+    (players || []).forEach(function (p) {
+      if (!p || (p.id !== "dCB1" && p.id !== "dCB2")) return;
+      p.label = (p.x >= CX) === strongRight ? "SC" : "WC";
+    });
+    return players;
+  }
+
   function defensePlayers(name, teSide) {
     const s = teSide === "left" ? -1 : 1;
     const dl = LOS - 54;
@@ -83,7 +95,7 @@
         P("dFS", "FS", "def", CX, LOS - 205),
       ],
     };
-    return layouts[name] || layouts["4-4 Base"];
+    return markCorners(layouts[name] || layouts["4-4 Base"], teSide);
   }
 
   const DEF_FORMATIONS = ["4-4 Base", "5-3 Base", "5-3 Bear", "6-2 Base", "6-2 Bear"];
