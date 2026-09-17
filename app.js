@@ -46,6 +46,47 @@
     return state.book.plays.find((p) => p.id === state.playId) || state.book.plays[0];
   }
 
+  function isDefensePlay(p) {
+    return !!(p && p.type === "defense");
+  }
+
+  function playKind(p) {
+    if (!p) return "run";
+    if (p.type === "pass" || p.type === "defense") return p.type;
+    return "run";
+  }
+
+  function playKindLabel(p) {
+    if (isDefensePlay(p)) return "DEF";
+    return (p.type || "run").toUpperCase();
+  }
+
+  function playTitle(p) {
+    if (!p) return "";
+    if (isDefensePlay(p)) return p.name || "";
+    return (p.formation || "") + "   " + (p.name || "");
+  }
+
+  function playListFormation(p) {
+    if (!p) return "";
+    if (isDefensePlay(p)) return p.defense || "Defense";
+    return p.formation || "";
+  }
+
+  function playFamilyLine(p) {
+    if (!p) return "";
+    if (isDefensePlay(p)) return p.defense || "Defense";
+    return (p.family || "") + (p.defense ? " · " + p.defense : "");
+  }
+
+  function syncDefenseChrome() {
+    const def = isDefensePlay(play());
+    const wrap = $("offFormWrap");
+    if (wrap) wrap.hidden = def;
+    const lab = $("defFormLabel");
+    if (lab) lab.textContent = def ? "Defense formation" : "Defense";
+  }
+
   function commitPlayFields() {
     const p = play();
     if (!p) return false;
@@ -73,19 +114,19 @@
     const p = play();
     if (!p) return;
     $("printNum").textContent = p.number;
-    $("printNum").className = "num " + p.type;
+    $("printNum").className = "num " + playKind(p);
     $("printNumBig").textContent = p.number;
-    $("printNumBig").className = "print-num " + p.type;
-    $("printTitle").textContent = p.formation + "   " + p.name;
-    $("printTitle2").textContent = p.formation + "   " + p.name;
+    $("printNumBig").className = "print-num " + playKind(p);
+    $("printTitle").textContent = playTitle(p);
+    $("printTitle2").textContent = playTitle(p);
     document.querySelectorAll('.play-item[data-id="' + p.id + '"]').forEach((li) => {
       const n = li.querySelector(".n");
       const meta = li.querySelector(".meta");
       if (n) {
         n.textContent = p.number;
-        n.className = "n " + p.type;
+        n.className = "n " + playKind(p);
       }
-      if (meta) meta.innerHTML = "<b>" + escapeHtml(p.formation) + "</b> " + escapeHtml(p.name);
+      if (meta) meta.innerHTML = "<b>" + escapeHtml(playListFormation(p)) + "</b> " + escapeHtml(p.name);
     });
     scheduleFitChrome();
   }
@@ -614,7 +655,8 @@
       if (state.favOnly && !p.star) return false;
       if (filter === "run" && p.type !== "run") return false;
       if (filter === "pass" && p.type !== "pass") return false;
-      const hay = (p.number + " " + p.formation + " " + p.name).toLowerCase();
+      if (filter === "defense" && p.type !== "defense") return false;
+      const hay = (p.number + " " + p.formation + " " + (p.defense || "") + " " + p.name + " " + (p.type || "")).toLowerCase();
       if (q && hay.indexOf(q) < 0) return false;
       return true;
     });
@@ -689,11 +731,11 @@
       li.tabIndex = 0;
       li.innerHTML =
         '<span class="grip" aria-hidden="true"></span><span class="n ' +
-        p.type +
+        playKind(p) +
         '">' +
         escapeHtml(p.number) +
         '</span><span class="meta"><b>' +
-        escapeHtml(p.formation) +
+        escapeHtml(playListFormation(p)) +
         "</b> " +
         escapeHtml(p.name) +
         '</span><button type="button" class="fav-btn' +
@@ -765,21 +807,22 @@
     $("nameInput").value = p.name;
     $("formSelect").value = p.formation;
     $("defSelect").value = p.defense || "4-4 Base";
-    $("typeSelect").value = p.type;
+    $("typeSelect").value = p.type === "defense" || p.type === "pass" ? p.type : "run";
     $("notes").value = p.notes || "";
     $("printNum").textContent = p.number;
-    $("printNum").className = "num " + p.type;
+    $("printNum").className = "num " + playKind(p);
     $("printNumBig").textContent = p.number;
-    $("printNumBig").className = "print-num " + p.type;
-    $("printTitle").textContent = p.formation + "   " + p.name;
-    $("printTitle2").textContent = p.formation + "   " + p.name;
-    $("printType").textContent = p.type.toUpperCase();
-    $("printType").className = "badge " + p.type;
-    $("printType2").textContent = p.type.toUpperCase();
-    $("printType2").className = "badge " + p.type;
+    $("printNumBig").className = "print-num " + playKind(p);
+    $("printTitle").textContent = playTitle(p);
+    $("printTitle2").textContent = playTitle(p);
+    $("printType").textContent = playKindLabel(p);
+    $("printType").className = "badge " + playKind(p);
+    $("printType2").textContent = playKindLabel(p);
+    $("printType2").className = "badge " + playKind(p);
     $("printStar").className = "sheet-star" + (p.star ? " on" : "");
     $("printStar2").className = "sheet-star" + (p.star ? " on" : "");
-    $("printFamily").textContent = (p.family || "") + (p.defense ? " · " + p.defense : "");
+    $("printFamily").textContent = playFamilyLine(p);
+    syncDefenseChrome();
     renderList();
     renderSetList();
     renderField();
@@ -897,11 +940,11 @@
         '<span class="seq">' +
         (i + 1) +
         '</span><span class="n ' +
-        p.type +
+        playKind(p) +
         '">' +
         escapeHtml(p.number) +
         '</span><span class="meta"><b>' +
-        escapeHtml(p.formation) +
+        escapeHtml(playListFormation(p)) +
         "</b> " +
         escapeHtml(p.name) +
         '</span><button type="button" class="rm" aria-label="Remove from list" title="Remove">×</button>';
@@ -1392,26 +1435,27 @@
     const root = $("printBook");
     root.innerHTML = "";
     (plays || []).forEach((p) => {
-      const family = (p.family || "") + (p.defense ? " · " + p.defense : "");
-      const title = escapeHtml((p.formation || "") + "   " + (p.name || ""));
+      const family = escapeHtml(playFamilyLine(p));
+      const title = escapeHtml(playTitle(p));
       const num = escapeHtml(p.number || "");
-      const kind = p.type === "pass" ? "pass" : "run";
+      const kind = playKind(p);
+      const label = playKindLabel(p);
       const sheet = document.createElement("section");
       sheet.className = "sheet print-sheet";
       sheet.innerHTML =
         '<div class="sheet-head">' +
         bandSvg() +
         '<div class="num ' + kind + '">' + num + "</div>" +
-        '<div class="titles"><strong>' + title + "</strong><em>" + escapeHtml(family) + "</em></div>" +
+        '<div class="titles"><strong>' + title + "</strong><em>" + family + "</em></div>" +
         '<span class="sheet-star' + (p.star ? " on" : "") + '">★</span>' +
-        '<span class="badge ' + kind + '">' + kind.toUpperCase() + "</span></div>" +
+        '<span class="badge ' + kind + '">' + label + "</span></div>" +
         '<div class="sheet-body"><svg class="print-field" viewBox="0 0 1200 720" xmlns="http://www.w3.org/2000/svg">' +
         '<rect width="1200" height="720" fill="#fff"/><g class="world"></g></svg></div>' +
         '<div class="sheet-foot">' +
         bandSvgFoot() +
         '<div class="titles"><strong>' + title + "</strong><em>St. Regis Catholic · Birmingham</em></div>" +
         '<span class="sheet-star' + (p.star ? " on" : "") + '">★</span>' +
-        '<span class="badge ' + kind + '">' + kind.toUpperCase() + "</span>" +
+        '<span class="badge ' + kind + '">' + label + "</span>" +
         '<div class="print-num ' + kind + '">' + num + "</div></div>";
       root.appendChild(sheet);
       paintPlay(p, sheet.querySelector("g.world"), { interactive: false });
@@ -1723,10 +1767,12 @@
   }
 
   function newPlay() {
+    const cur = play();
     const formation = $("formSelect").value || "I Right";
     const nums = state.book.plays.map((p) => parseInt(p.number, 10) || 0);
     const next = String(Math.max(0, ...nums) + 1).padStart(2, "0");
-    const p = RaidersPlays.blankPlay(formation, next, "New Play", "run", $("defSelect").value || "4-4 Base");
+    const type = cur && cur.type === "defense" ? "defense" : (cur && cur.type === "pass" ? "pass" : "run");
+    const p = RaidersPlays.blankPlay(formation, next, type === "defense" ? "New Defense" : "New Play", type, $("defSelect").value || "4-4 Base");
     pushBookUndo();
     state.book.plays.push(p);
     selectPlay(p.id);

@@ -115,6 +115,7 @@
     }
     .play-item .n { font-weight: 800; width: 22px; flex: none; font-size: 12px; }
     .play-item .n.pass { color: var(--red); }
+    .play-item .n.defense { color: #4a6fa5; }
     .play-item .meta {
       font-size: 12px; color: var(--text); flex: 1; min-width: 0;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.25;
@@ -184,6 +185,7 @@
       line-height: 1.1;
     }
     .sheet-head .num.pass, .print-num.pass { color: #ff6b6b; }
+    .sheet-head .num.defense, .print-num.defense { color: #cda425; }
     .titles {
       flex: 1; min-width: 0; overflow: hidden;
       display: flex; flex-direction: column; justify-content: center; gap: 2px;
@@ -200,8 +202,10 @@
     .badge {
       display: inline-block; border-radius: 8px; padding: 8px 14px; font-size: 22px; font-weight: 800;
       background: var(--run); color: #fff; letter-spacing: .06em; line-height: 1.1;
+      flex: none;
     }
     .badge.pass { background: var(--gold); color: var(--navy); }
+    .badge.defense { background: #16355c; color: var(--gold); }
     .print-num {
       background: #fff; color: var(--navy); font-size: 40px; line-height: 1.1; padding: 6px 12px; font-weight: 900;
     }
@@ -559,6 +563,7 @@
             <option value="all">All</option>
             <option value="run">Run</option>
             <option value="pass">Pass</option>
+            <option value="defense">Defense</option>
           </select>
         </div>
         <div id="playList" class="play-list"></div>
@@ -634,15 +639,18 @@
         <h2>Play</h2>
         <div class="row">
           <input id="numInput" style="width:70px" />
-          <select id="typeSelect" style="width:90px">
+          <select id="typeSelect" style="width:108px">
             <option value="run">Run</option>
             <option value="pass">Pass</option>
+            <option value="defense">Defense</option>
           </select>
         </div>
         <input id="nameInput" style="margin-bottom:8px;width:100%;border:1px solid #c9d3df;border-radius:4px;padding:6px 8px" />
-        <div class="field-label">Offense</div>
-        <select id="formSelect" style="margin-bottom:8px"></select>
-        <div class="field-label">Defense</div>
+        <div id="offFormWrap">
+          <div class="field-label">Offense</div>
+          <select id="formSelect" style="margin-bottom:8px"></select>
+        </div>
+        <div class="field-label" id="defFormLabel">Defense</div>
         <select id="defSelect" style="margin-bottom:12px"></select>
         <h2>Kids</h2>
         <p class="field-label" style="text-transform:none;letter-spacing:0;font-size:11px;margin-bottom:6px">Names on this play only. Apply copies them to every play.</p>
@@ -709,10 +717,10 @@
     </div>
   </div>
   <div id="toast"></div>
-  <script src="plays.js?v=cloud17"></script>
-  <script src="playbook-data.js?v=cloud17"></script>
-  <script src="cloud-config.js?v=cloud17"></script>
-  <script src="cloud.js?v=cloud17"></script>
-  <script src="app.js?v=cloud17"></script>
+  <script src="plays.js?v=cloud18"></script>
+  <script src="playbook-data.js?v=cloud18"></script>
+  <script src="cloud-config.js?v=cloud18"></script>
+  <script src="cloud.js?v=cloud18"></script>
+  <script src="app.js?v=cloud18"></script>
 </body>
 </html>
