@@ -19,6 +19,7 @@
     selected: null, // { kind: 'player'|'assign', id }
     handle: null, // waypoint index
     drawing: null, // { from, type, points }
+    drawHold: false,
     hideDef: false,
     curve: true,
     snap: true,
@@ -1057,8 +1058,8 @@
     const hints = {
       select: "Drag players or lines. Double-click a circle to put initials under the position. Click a line, then drag the solid dots — or the hollow middle dot to curve it.",
       route: "Click a player, then click bend spots on the field. Tap Enter to finish the arrow. Keep Curve on for a smooth arc.",
-      block: "Click a player to block. If he already has motion, the T-bar starts where the dashed line ends. Tap a block, then Delete to remove it.",
-      motion: "Click a player, then click where he motions to. Tap Enter to finish. Then switch to Block and click him again — the block starts at the motion spot.",
+      block: "Tap the player to start. After motion, the T-bar starts at the dashed end — then tap where he blocks. Do not drag back to the player.",
+      motion: "Tap a player, then tap where he motions to. Tap Enter to finish. Then switch to Block and tap the player — the block starts at the dashed end.",
       ball: "Click the ball carrier, then tap the path. When the arrow looks right, tap Enter to lock it in.",
       paintRed: "Click a player to mark the ball carrier (red).",
       paintGold: "Click a player to mark the primary (gold).",
@@ -1434,7 +1435,16 @@
     return play().players.find((p) => p.id === id);
   }
 
-  function beginDraw(pl, type, pt, fromCircle) {
+  function collapseDrawPoints(pts) {
+    const out = [];
+    (pts || []).forEach(function (pt) {
+      const prev = out[out.length - 1];
+      if (!prev || dist(prev, pt) >= 8) out.push({ x: pt.x, y: pt.y });
+    });
+    return out;
+  }
+
+  function beginDraw(pl, type, pt, fromCircle, pointerType) {
     let start = { x: pl.x, y: pl.y };
     let afterMotion = false;
     if (!fromCircle && type !== "motion") {
@@ -1444,21 +1454,29 @@
         afterMotion = true;
       }
     }
+    const touch = pointerType === "touch" || afterMotion;
+    state.drawHold = touch;
     state.drawing = {
       from: pl.id,
       type: type,
       afterMotion: afterMotion,
-      points: [start, { x: pt.x, y: pt.y }],
+      points: [start, { x: start.x, y: start.y }],
     };
     state.selected = { kind: "player", id: pl.id };
     renderField();
   }
 
   function finishDraw(keep) {
+    state.drawHold = false;
     if (!state.drawing) return;
     if (keep && state.drawing.points.length >= 2) {
-      const pts = state.drawing.points;
-      if (pts.length >= 3 && dist(pts[pts.length - 1], pts[pts.length - 2]) < 10) pts.pop();
+      const pts = collapseDrawPoints(state.drawing.points);
+      if (pts.length < 2) {
+        state.drawing = null;
+        render();
+        return;
+      }
+      state.drawing.points = pts;
       pushUndo();
       const a = {
         id: RaidersPlays.uid("a"),
@@ -1500,7 +1518,12 @@
     }
 
     if (state.drawing) {
-      state.drawing.points.push({ x: pt.x, y: pt.y });
+      const pts = state.drawing.points;
+      if (pts.length >= 2 && dist(pts[pts.length - 1], pts[pts.length - 2]) < 14) {
+        pts[pts.length - 1] = { x: pt.x, y: pt.y };
+      } else {
+        pts.push({ x: pt.x, y: pt.y });
+      }
       renderField();
       return;
     }
@@ -1508,7 +1531,7 @@
     const plEarly = hitPlayer(pt, p.players);
     if (["route", "block", "motion", "ball"].indexOf(state.tool) >= 0) {
       if (plEarly) {
-        beginDraw(plEarly, state.tool, pt, evt.altKey);
+        beginDraw(plEarly, state.tool, pt, evt.altKey, evt.pointerType);
         return;
       }
     }
@@ -1546,7 +1569,7 @@
 
     const pl = hitPlayer(pt, p.players);
     if (["route", "block", "motion", "ball"].indexOf(state.tool) >= 0) {
-      if (pl) beginDraw(pl, state.tool, pt, evt.altKey);
+      if (pl) beginDraw(pl, state.tool, pt, evt.altKey, evt.pointerType);
       return;
     }
 
@@ -1587,6 +1610,7 @@
     if (state.drawing || state.drag) evt.preventDefault();
     const pt = svgPoint(evt);
     if (state.drawing) {
+      if (state.drawHold) return;
       const pts = state.drawing.points;
       pts[pts.length - 1] = { x: pt.x, y: pt.y };
       renderField();
@@ -1640,6 +1664,12 @@
   }
 
   function onPointerUp() {
+    if (state.drawHold && state.drawing && state.drawing.points.length >= 2) {
+      const pts = state.drawing.points;
+      pts[pts.length - 1] = { x: pts[0].x, y: pts[0].y };
+      renderField();
+    }
+    state.drawHold = false;
     if (state.drag) {
       state.drag = null;
       scheduleSave();
