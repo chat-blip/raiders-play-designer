@@ -546,6 +546,7 @@
       star: false,
       notes: "",
       createdAt: Date.now(),
+      modifiedAt: Date.now(),
       players: formationPlayers(formation, def),
       assignments: [],
     };

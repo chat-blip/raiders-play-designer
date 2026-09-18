@@ -117,7 +117,10 @@
       p.notes = notesEl.value;
       changed = true;
     }
-    if (changed) save();
+    if (changed) {
+      touchPlay(p);
+      save();
+    }
     return changed;
   }
 
@@ -168,6 +171,7 @@
     state.undo.push(clone(play()));
     if (state.undo.length > 80) state.undo.shift();
     state.redo = [];
+    touchPlay(play());
     scheduleSave();
   }
 
@@ -179,6 +183,7 @@
     if (i >= 0) state.book.plays[i] = prev;
     state.playId = prev.id;
     state.selected = null;
+    touchPlay(play());
     render();
     scheduleSave();
   }
@@ -190,6 +195,7 @@
     const i = state.book.plays.findIndex((p) => p.id === next.id);
     if (i >= 0) state.book.plays[i] = next;
     state.playId = next.id;
+    touchPlay(play());
     render();
     scheduleSave();
   }
@@ -767,8 +773,14 @@
 
   function bookSortMode() {
     const v = state.playSort;
-    if (v === "letter" || v === "newest" || v === "oldest") return v;
+    if (v === "letter" || v === "tweaked" || v === "newest" || v === "oldest") return v;
     return "manual";
+  }
+
+  function touchPlay(p) {
+    if (!p) return;
+    p.modifiedAt = Date.now();
+    if (bookSortMode() === "tweaked") renderList();
   }
 
   function playLetterKey(p) {
@@ -780,6 +792,14 @@
     if (typeof n === "number" && n > 0) return n;
     const i = state.book && state.book.plays ? state.book.plays.indexOf(p) : -1;
     return i < 0 ? 0 : i;
+  }
+
+  function playModifiedStamp(p) {
+    const n = p && p.modifiedAt;
+    if (typeof n === "number" && n > 0) return n;
+    const c = p && p.createdAt;
+    if (typeof c === "number" && c > 0) return c;
+    return 0;
   }
 
   function cmpPlayLetter(a, b) {
@@ -800,6 +820,12 @@
     const copy = plays.slice();
     if (mode === "letter") {
       copy.sort(cmpPlayLetter);
+    } else if (mode === "tweaked") {
+      copy.sort(function (a, b) {
+        const d = playModifiedStamp(b) - playModifiedStamp(a);
+        if (d) return d;
+        return cmpPlayLetter(a, b);
+      });
     } else {
       const dir = mode === "newest" ? -1 : 1;
       copy.sort(function (a, b) {
@@ -827,7 +853,7 @@
   }
 
   function setPlaySort(mode) {
-    const next = mode === "letter" || mode === "newest" || mode === "oldest" ? mode : "manual";
+    const next = mode === "letter" || mode === "tweaked" || mode === "newest" || mode === "oldest" ? mode : "manual";
     state.playSort = next;
     const sel = $("playSort");
     if (sel && sel.value !== next) sel.value = next;
@@ -1028,6 +1054,7 @@
         inp.setAttribute("aria-label", entry.label + " initials");
         inp.addEventListener("input", () => {
           setKidName(play(), inp.dataset.spot, inp.value);
+          touchPlay(play());
           scheduleSave();
           renderField();
         });
@@ -1994,6 +2021,7 @@
     const copy = clone(src);
     copy.id = RaidersPlays.uid("play");
     copy.createdAt = Date.now();
+    copy.modifiedAt = Date.now();
     const n = parseInt(src.number, 10);
     copy.number = String((n || 0) + 1).padStart(2, "0");
     copy.name = src.name + " copy";
@@ -2748,7 +2776,7 @@
     bind();
     const ui = loadUi();
     state.favOnly = !!ui.favOnly;
-    state.playSort = ui.playSort === "letter" || ui.playSort === "newest" || ui.playSort === "oldest" ? ui.playSort : "manual";
+    state.playSort = ui.playSort === "letter" || ui.playSort === "tweaked" || ui.playSort === "newest" || ui.playSort === "oldest" ? ui.playSort : "manual";
     if ($("playSort")) $("playSort").value = state.playSort;
     syncFavButton();
     applySideWidth(ui.sideW || SIDE_DEFAULT);
