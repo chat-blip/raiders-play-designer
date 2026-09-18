@@ -2360,6 +2360,7 @@
 
   function applyToolWidth(px) {
     const w = Math.max(TOOL_MIN, Math.min(panelMax("tool"), Math.round(px)));
+    document.documentElement.style.setProperty("--tool-w", w + "px");
     document.querySelector(".layout").style.setProperty("--tool-w", w + "px");
     return w;
   }

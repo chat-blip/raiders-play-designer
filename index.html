@@ -282,17 +282,21 @@
     .keys { font-size: 11px; color: var(--muted); line-height: 1.45; margin-top: 10px; }
     .keys b { color: var(--text); }
     .editor-flip {
-      position: sticky;
-      bottom: -8px;
-      z-index: 5;
+      position: fixed;
+      right: 8px;
+      bottom: max(10px, env(safe-area-inset-bottom, 0px));
+      z-index: 40;
       display: flex;
       align-items: center;
       gap: 6px;
-      margin: auto -10px -8px;
-      padding: 8px 8px 12px;
+      width: calc(var(--tool-w, 220px) - 16px);
+      max-width: calc(100vw - 16px);
+      margin: 0;
+      padding: 8px;
       background: var(--navy);
-      border-top: 3px solid var(--gold);
-      box-shadow: 0 -8px 18px rgba(11, 31, 58, 0.2);
+      border: 2px solid var(--gold);
+      border-radius: 8px;
+      box-shadow: 0 10px 28px rgba(11, 31, 58, 0.4);
     }
     .editor-flip button {
       flex: 1;
@@ -314,7 +318,8 @@
       font-size: 13px;
       white-space: nowrap;
     }
-    body.present .editor-flip { display: none; }
+    body.present .editor-flip, body.locked .editor-flip { display: none; }
+    .tools { padding-bottom: 76px; }
     .present-dock {
       display: none;
       position: fixed;
@@ -421,7 +426,7 @@
         height: 80px; min-height: 80px; max-height: 80px; padding: 8px 14px;
       }
     }
-    body.locked .app, body.locked .present-dock, body.locked .present-sketch { visibility: hidden; }
+    body.locked .app, body.locked .present-dock, body.locked .present-sketch, body.locked .editor-flip { visibility: hidden; }
     #pinGate {
       position: fixed; inset: 0; z-index: 80;
       display: flex; align-items: center; justify-content: center;
@@ -756,11 +761,6 @@
           <b>Double-click</b> a circle to put initials under the position.<br />
           <b>↑ ↓</b> next play · <b>Ctrl+Z</b> undo · <b>C</b> curve · <b>F</b> flip · <b>Full screen</b> for the kids · saves to this site.
         </p>
-        <div class="editor-flip" id="editorFlip">
-          <button type="button" id="btnEditorPrev">Prev</button>
-          <span class="pos" id="editorPos">1 / 1</span>
-          <button type="button" id="btnEditorNext">Next</button>
-        </div>
       </aside>
     </div>
   </div>
@@ -789,11 +789,16 @@
     </div>
     <button type="button" id="btnPresentExit" class="present-exit">Exit</button>
   </div>
+  <div class="editor-flip" id="editorFlip">
+    <button type="button" id="btnEditorPrev">Prev</button>
+    <span class="pos" id="editorPos">1 / 1</span>
+    <button type="button" id="btnEditorNext">Next</button>
+  </div>
   <div id="toast"></div>
-  <script src="plays.js?v=cloud31"></script>
-  <script src="playbook-data.js?v=cloud31"></script>
-  <script src="cloud-config.js?v=cloud31"></script>
-  <script src="cloud.js?v=cloud31"></script>
-  <script src="app.js?v=cloud31"></script>
+  <script src="plays.js?v=cloud32"></script>
+  <script src="playbook-data.js?v=cloud32"></script>
+  <script src="cloud-config.js?v=cloud32"></script>
+  <script src="cloud.js?v=cloud32"></script>
+  <script src="app.js?v=cloud32"></script>
 </body>
 </html>
