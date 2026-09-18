@@ -163,6 +163,8 @@
     "QIP I Left": { family: "QIP formation", te: "left", backs: "pistol", rec: "twins" },
     "ZIP I Right": { family: "ZIP formation", te: "right", backs: "under", rec: "split" },
     "ZIP I Left": { family: "ZIP formation", te: "left", backs: "under", rec: "split" },
+    "Maryland Right": { family: "Maryland formation", te: "right", backs: "maryland" },
+    "Maryland Left": { family: "Maryland formation", te: "left", backs: "maryland" },
   };
 
   function batmanOffense(teSide) {
@@ -181,6 +183,25 @@
       P("A", "A", "off", 600, 510),
       P("X", "X", "off", mx(459), 336),
       P("Z", "Z", "off", mx(785), 376),
+    ];
+  }
+
+  function marylandOffense(teSide) {
+    function mx(x) {
+      return teSide === "right" ? x : 2 * CX - x;
+    }
+    return [
+      P("LT", "LT", "off", 508, 338),
+      P("LG", "LG", "off", 554, 338),
+      P("C", "C", "off", 600, 338),
+      P("RG", "RG", "off", 646, 338),
+      P("RT", "RT", "off", 692, 338),
+      P("Y", "Y", "off", mx(742), 338),
+      P("QB", "QB", "off", 600, 386),
+      P("B", "B", "off", mx(598), 438),
+      P("A", "A", "off", mx(598), 486),
+      P("X", "X", "off", mx(163), 340),
+      P("Z", "Z", "off", mx(597), 536),
     ];
   }
 
@@ -214,6 +235,8 @@
     let players;
     if (f.backs === "batman") {
       players = batmanOffense(f.te).concat(defensePlayers(defName || "4-4 Base", f.te));
+    } else if (f.backs === "maryland") {
+      players = marylandOffense(f.te).concat(defensePlayers(defName || "4-4 Base", f.te));
     } else {
       players = [
         ...oLine(f.te),
