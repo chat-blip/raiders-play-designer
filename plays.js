@@ -545,6 +545,7 @@
       type: type || "run",
       star: false,
       notes: "",
+      createdAt: Date.now(),
       players: formationPlayers(formation, def),
       assignments: [],
     };

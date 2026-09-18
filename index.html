@@ -92,6 +92,8 @@
       border-radius: 4px; padding: 4px 8px; font-size: 11px; font-weight: 700;
     }
     .fav-filter.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+    #playSort { font-size: 12px; font-weight: 700; }
+    #playList.sorted .play-item { cursor: pointer; }
     .field-label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
     .row { display: flex; gap: 6px; margin-bottom: 6px; }
     .row input, .row select, .tools select, .tools input, .tools textarea {
@@ -587,6 +589,14 @@
             <option value="defense">Defense</option>
           </select>
         </div>
+        <div class="row">
+          <select id="playSort" title="Sort the playbook list. Drag order is your custom list. Play A–Z uses the Play box (A, B, Y, Z). Newest uses the date you created the play.">
+            <option value="manual">Sort: drag order</option>
+            <option value="letter">Sort: Play A–Z</option>
+            <option value="newest">Sort: newest first</option>
+            <option value="oldest">Sort: oldest first</option>
+          </select>
+        </div>
         <div id="playList" class="play-list"></div>
         <div class="set-panel">
           <h2>Game list</h2>
@@ -739,10 +749,10 @@
     <button type="button" id="btnPresentExit" class="present-exit">Exit</button>
   </div>
   <div id="toast"></div>
-  <script src="plays.js?v=cloud26"></script>
-  <script src="playbook-data.js?v=cloud26"></script>
-  <script src="cloud-config.js?v=cloud26"></script>
-  <script src="cloud.js?v=cloud26"></script>
-  <script src="app.js?v=cloud26"></script>
+  <script src="plays.js?v=cloud27"></script>
+  <script src="playbook-data.js?v=cloud27"></script>
+  <script src="cloud-config.js?v=cloud27"></script>
+  <script src="cloud.js?v=cloud27"></script>
+  <script src="app.js?v=cloud27"></script>
 </body>
 </html>

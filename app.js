@@ -31,6 +31,7 @@
     colResize: null,
     present: false,
     favOnly: false,
+    playSort: "manual",
     sketch: [],
     sketchStroke: null,
     drag: null,
@@ -662,6 +663,12 @@
     }
     if (setBox) setBox.classList.remove("drop-ready");
     if (d.from === "book") {
+      if (bookSortMode() !== "manual") {
+        d.target = null;
+        d.toId = null;
+        document.querySelectorAll("#playList .play-item").forEach((el) => el.classList.remove("drop-before", "drop-after"));
+        return;
+      }
       d.target = "book";
       const bookHit = hitListItem(Array.prototype.slice.call(document.querySelectorAll("#playList .play-item")), e, d.id);
       if (bookHit) {
@@ -758,10 +765,56 @@
     renderList();
   }
 
+  function bookSortMode() {
+    const v = state.playSort;
+    if (v === "letter" || v === "newest" || v === "oldest") return v;
+    return "manual";
+  }
+
+  function playLetterKey(p) {
+    return String((p && p.number) || "").trim();
+  }
+
+  function playCreatedStamp(p) {
+    const n = p && p.createdAt;
+    if (typeof n === "number" && n > 0) return n;
+    const i = state.book && state.book.plays ? state.book.plays.indexOf(p) : -1;
+    return i < 0 ? 0 : i;
+  }
+
+  function cmpPlayLetter(a, b) {
+    const ka = playLetterKey(a);
+    const kb = playLetterKey(b);
+    if (!ka && kb) return 1;
+    if (ka && !kb) return -1;
+    const c = ka.localeCompare(kb, undefined, { numeric: true, sensitivity: "base" });
+    if (c) return c;
+    const fa = String(playListFormation(a) || "").localeCompare(playListFormation(b) || "", undefined, { sensitivity: "base" });
+    if (fa) return fa;
+    return String(a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
+  }
+
+  function sortBookPlays(plays) {
+    const mode = bookSortMode();
+    if (mode === "manual" || !plays || plays.length < 2) return plays;
+    const copy = plays.slice();
+    if (mode === "letter") {
+      copy.sort(cmpPlayLetter);
+    } else {
+      const dir = mode === "newest" ? -1 : 1;
+      copy.sort(function (a, b) {
+        const d = (playCreatedStamp(a) - playCreatedStamp(b)) * dir;
+        if (d) return d;
+        return cmpPlayLetter(a, b);
+      });
+    }
+    return copy;
+  }
+
   function visibleBookPlays() {
     const q = (($("playSearch") && $("playSearch").value) || "").toLowerCase();
     const filter = ($("playFilter") && $("playFilter").value) || "all";
-    return state.book.plays.filter(function (p) {
+    const filtered = state.book.plays.filter(function (p) {
       if (state.favOnly && !p.star) return false;
       if (filter === "run" && p.type !== "run") return false;
       if (filter === "pass" && p.type !== "pass") return false;
@@ -770,6 +823,16 @@
       if (q && hay.indexOf(q) < 0) return false;
       return true;
     });
+    return sortBookPlays(filtered);
+  }
+
+  function setPlaySort(mode) {
+    const next = mode === "letter" || mode === "newest" || mode === "oldest" ? mode : "manual";
+    state.playSort = next;
+    const sel = $("playSort");
+    if (sel && sel.value !== next) sel.value = next;
+    saveUi({ playSort: next });
+    renderList();
   }
 
   function stepThrough(plays, dir) {
@@ -822,6 +885,7 @@
   function renderList() {
     const ul = $("playList");
     ul.innerHTML = "";
+    ul.classList.toggle("sorted", bookSortMode() !== "manual");
     const plays = visibleBookPlays();
     updatePlayCount();
     if (!plays.length) {
@@ -1929,6 +1993,7 @@
     const src = play();
     const copy = clone(src);
     copy.id = RaidersPlays.uid("play");
+    copy.createdAt = Date.now();
     const n = parseInt(src.number, 10);
     copy.number = String((n || 0) + 1).padStart(2, "0");
     copy.name = src.name + " copy";
@@ -2459,6 +2524,9 @@
 
     $("playSearch").addEventListener("input", renderList);
     $("playFilter").addEventListener("change", renderList);
+    if ($("playSort")) {
+      $("playSort").addEventListener("change", () => setPlaySort($("playSort").value));
+    }
     if ($("btnFavOnly")) $("btnFavOnly").addEventListener("click", toggleFavOnly);
     $("playList").addEventListener("pointerdown", () => setListFocus("book"));
     $("setList").addEventListener("pointerdown", () => setListFocus("set"));
@@ -2680,6 +2748,8 @@
     bind();
     const ui = loadUi();
     state.favOnly = !!ui.favOnly;
+    state.playSort = ui.playSort === "letter" || ui.playSort === "newest" || ui.playSort === "oldest" ? ui.playSort : "manual";
+    if ($("playSort")) $("playSort").value = state.playSort;
     syncFavButton();
     applySideWidth(ui.sideW || SIDE_DEFAULT);
     applyToolWidth(ui.toolW || TOOL_DEFAULT);
