@@ -270,6 +270,11 @@
       touch-action: manipulation;
     }
     .tool-grid button.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+    .tool-grid #btnPresent {
+      background: var(--navy);
+      color: #fff;
+      border-color: var(--navy);
+    }
     .check { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 8px 0 12px; }
     .tools textarea { min-height: 90px; resize: vertical; }
     .keys { font-size: 11px; color: var(--muted); line-height: 1.45; margin-top: 10px; }
@@ -277,8 +282,8 @@
     .present-dock {
       display: none;
       position: fixed;
-      right: 20px;
-      bottom: 112px;
+      right: 16px;
+      bottom: 24px;
       z-index: 50;
       flex-direction: column;
       align-items: flex-end;
@@ -331,6 +336,19 @@
       color: var(--gold);
       font-size: 14px;
       white-space: nowrap;
+    }
+    .present-exit {
+      min-width: 148px;
+      min-height: 52px;
+      padding: 12px 18px;
+      background: var(--gold);
+      color: var(--navy);
+      border: 0;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: 800;
+      box-shadow: 0 10px 28px rgba(11, 31, 58, 0.4);
+      touch-action: manipulation;
     }
     body.present .top, body.present .sidebar, body.present .tools,
     body.present .hint, body.present .touch-bar, body.present .col-resizer, body.present .handle {
@@ -548,7 +566,6 @@
       <button type="button" id="btnRedo" class="ghost">Redo</button>
       <button type="button" id="btnPrint">Print page</button>
       <button type="button" id="btnPrintAll">Print all</button>
-      <button type="button" id="btnPresent" title="Kids view: the play fills the laptop. Arrow keys flip plays. Esc exits.">Full screen</button>
       <button type="button" id="btnExport" title="Saves plays, kid names, and game lists as a JSON file">Save book</button>
       <button type="button" id="btnLaptop" title="Full folder for Drive: designer + every play, name, and game list">Laptop pack</button>
       <button type="button" id="btnImport" class="ghost" title="Load a saved book on this computer">Load book</button>
@@ -677,6 +694,7 @@
           <button type="button" data-tool="paintGold">Primary</button>
           <button type="button" data-tool="addOff">+ Offense</button>
           <button type="button" data-tool="addDef">+ Defense</button>
+          <button type="button" id="btnPresent" title="Kids view: the play fills the screen. Arrow keys flip plays. Esc exits.">Full screen</button>
         </div>
         <label class="check"><input type="checkbox" id="curveOn" checked /> Curve lines</label>
         <label class="check"><input type="checkbox" id="hideDef" /> Hide defense</label>
@@ -717,14 +735,14 @@
       <button type="button" id="btnPresentPrev">Prev</button>
       <span class="pos" id="presentPos">1 / 1</span>
       <button type="button" id="btnPresentNext">Next</button>
-      <button type="button" id="btnPresentExit">Exit</button>
     </div>
+    <button type="button" id="btnPresentExit" class="present-exit">Exit</button>
   </div>
   <div id="toast"></div>
-  <script src="plays.js?v=cloud25"></script>
-  <script src="playbook-data.js?v=cloud25"></script>
-  <script src="cloud-config.js?v=cloud25"></script>
-  <script src="cloud.js?v=cloud25"></script>
-  <script src="app.js?v=cloud25"></script>
+  <script src="plays.js?v=cloud26"></script>
+  <script src="playbook-data.js?v=cloud26"></script>
+  <script src="cloud-config.js?v=cloud26"></script>
+  <script src="cloud.js?v=cloud26"></script>
+  <script src="app.js?v=cloud26"></script>
 </body>
 </html>
