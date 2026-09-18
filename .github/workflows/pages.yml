@@ -48,6 +48,8 @@ jobs:
           text = re.sub(r'\?v=[^"]+', "?v=run" + stamp, html.read_text(encoding="utf-8"))
           text = re.sub(r'data-build="[^"]*"', 'data-build="run' + stamp + '"', text)
           html.write_text(text, encoding="utf-8")
+          pathlib.Path("site/play.html").write_text(text, encoding="utf-8")
+          pathlib.Path("site/go.html").write_text(text, encoding="utf-8")
           pathlib.Path("site/version.json").write_text(
               json.dumps({"build": "run" + stamp}) + "\n",
               encoding="utf-8",
