@@ -165,6 +165,8 @@
     "ZIP I Left": { family: "ZIP formation", te: "left", backs: "under", rec: "split" },
     "Maryland Right": { family: "Maryland formation", te: "right", backs: "maryland" },
     "Maryland Left": { family: "Maryland formation", te: "left", backs: "maryland" },
+    "Tight Right": { family: "Tight formation", te: "right", backs: "tight" },
+    "Tight Left": { family: "Tight formation", te: "left", backs: "tight" },
   };
 
   function batmanOffense(teSide) {
@@ -205,6 +207,25 @@
     ];
   }
 
+  function tightOffense(teSide) {
+    function mx(x) {
+      return teSide === "right" ? x : 2 * CX - x;
+    }
+    return [
+      P("LT", "LT", "off", 508, 338),
+      P("LG", "LG", "off", 554, 338),
+      P("C", "C", "off", 600, 338),
+      P("RG", "RG", "off", 646, 338),
+      P("RT", "RT", "off", 692, 338),
+      P("Y", "Y", "off", mx(750), 342),
+      P("QB", "QB", "off", 600, 386),
+      P("B", "B", "off", mx(640), 378),
+      P("A", "A", "off", mx(556), 378),
+      P("X", "X", "off", mx(167), 340),
+      P("Z", "Z", "off", mx(1025), 384),
+    ];
+  }
+
   function pinOLine(players) {
     const spots = {
       LT: { x: CX - 2 * GAP, y: LOS, label: "LT" },
@@ -237,6 +258,8 @@
       players = batmanOffense(f.te).concat(defensePlayers(defName || "4-4 Base", f.te));
     } else if (f.backs === "maryland") {
       players = marylandOffense(f.te).concat(defensePlayers(defName || "4-4 Base", f.te));
+    } else if (f.backs === "tight") {
+      players = tightOffense(f.te).concat(defensePlayers(defName || "4-4 Base", f.te));
     } else {
       players = [
         ...oLine(f.te),
