@@ -45,12 +45,16 @@ jobs:
           )
           stamp = os.environ.get("GITHUB_RUN_ID") or "dev"
           html = pathlib.Path("site/index.html")
-          html.write_text(
-              re.sub(r'\?v=[^"]+', "?v=run" + stamp, html.read_text(encoding="utf-8")),
+          text = re.sub(r'\?v=[^"]+', "?v=run" + stamp, html.read_text(encoding="utf-8"))
+          text = re.sub(r'data-build="[^"]*"', 'data-build="run' + stamp + '"', text)
+          html.write_text(text, encoding="utf-8")
+          pathlib.Path("site/version.json").write_text(
+              json.dumps({"build": "run" + stamp}) + "\n",
               encoding="utf-8",
           )
           print("cloud_token_len", len(cfg["token"]))
           print("cloud_pin_len", len(cfg["pin"]))
+          print("build", "run" + stamp)
           PY
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

@@ -35,6 +35,11 @@
 
   function reloadFresh() {
     try {
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+          regs.forEach(function (r) { r.unregister(); });
+        });
+      }
       if (window.caches && caches.keys) {
         caches.keys().then(function (keys) {
           keys.forEach(function (k) { caches.delete(k); });
@@ -43,6 +48,19 @@
     } catch (e) {}
     const next = location.pathname + "?fresh=" + Date.now();
     location.replace(next);
+  }
+
+  function checkBuild() {
+    const local = document.documentElement.getAttribute("data-build") || "";
+    if (!local) return;
+    fetch("version.json?t=" + Date.now(), { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (v) {
+        if (!v || !v.build || v.build === local) return;
+        if (/[?&]fresh=/.test(location.search || "")) return;
+        reloadFresh();
+      })
+      .catch(function () {});
   }
 
   function signOut() {
@@ -232,6 +250,15 @@
         signOut();
       });
     }
+    const reload = document.getElementById("btnReloadFresh");
+    if (reload && !reload.dataset.wired) {
+      reload.dataset.wired = "1";
+      reload.addEventListener("click", function (e) {
+        e.preventDefault();
+        reloadFresh();
+      });
+    }
+    checkBuild();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", wireFresh);
   else wireFresh();
