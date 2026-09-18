@@ -875,6 +875,7 @@
     const set = $("setList");
     if (book) book.classList.toggle("nav-on", state.listFocus === "book");
     if (set) set.classList.toggle("nav-on", state.listFocus === "set");
+    updatePresentBar();
   }
 
   function stepSet(dir) {
@@ -914,6 +915,7 @@
     ul.classList.toggle("sorted", bookSortMode() !== "manual");
     const plays = visibleBookPlays();
     updatePlayCount();
+    updatePresentBar();
     if (!plays.length) {
       const empty = document.createElement("div");
       empty.className = "set-empty";
@@ -2483,13 +2485,27 @@
     renderSketch();
   }
 
+  function editorFlipList() {
+    if (state.listFocus === "set" && setPlays().length) return setPlays();
+    return visibleBookPlays();
+  }
+
   function updatePresentBar() {
-    const el = $("presentPos");
-    if (!el) return;
-    const list = presentList();
+    const list = state.present ? presentList() : editorFlipList();
     const i = list.findIndex((p) => p.id === state.playId);
-    const deck = presentSource() === "set" ? "Game list" : "Playbook";
-    el.textContent = deck + "  " + (i >= 0 ? i + 1 : 1) + " / " + Math.max(1, list.length);
+    const n = Math.max(1, list.length);
+    const at = i >= 0 ? i + 1 : 1;
+    const usingSet = state.present
+      ? presentSource() === "set" && setPlays().length
+      : state.listFocus === "set" && setPlays().length;
+    const deck = usingSet ? "Game list" : "Playbook";
+    const presentEl = $("presentPos");
+    if (presentEl) presentEl.textContent = deck + "  " + at + " / " + n;
+    const editorEl = $("editorPos");
+    if (editorEl) {
+      editorEl.textContent = at + " / " + n;
+      editorEl.title = deck + "  " + at + " / " + n;
+    }
   }
 
   function enterPresent() {
@@ -2667,6 +2683,8 @@
     if ($("btnPresentExit")) $("btnPresentExit").addEventListener("click", () => exitPresent());
     if ($("btnPresentPrev")) $("btnPresentPrev").addEventListener("click", () => stepPlays(-1));
     if ($("btnPresentNext")) $("btnPresentNext").addEventListener("click", () => stepPlays(1));
+    if ($("btnEditorPrev")) $("btnEditorPrev").addEventListener("click", () => stepPlays(-1));
+    if ($("btnEditorNext")) $("btnEditorNext").addEventListener("click", () => stepPlays(1));
     const sketch = $("presentSketch");
     if (sketch) {
       sketch.addEventListener("pointerdown", onSketchDown);

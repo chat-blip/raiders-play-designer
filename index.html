@@ -69,7 +69,7 @@
     }
     .sidebar { border-right: 1px solid #d5dde7; display: flex; flex-direction: column; overflow: hidden; }
     .play-list { flex: 1; overflow: auto; min-height: 100px; }
-    .tools { border-left: 1px solid #d5dde7; }
+    .tools { border-left: 1px solid #d5dde7; display: flex; flex-direction: column; }
     h2 { margin: 0 0 4px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
     .playbook-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
     .playbook-top h2 { margin: 0; flex: 1; }
@@ -281,6 +281,40 @@
     .tools textarea { min-height: 90px; resize: vertical; }
     .keys { font-size: 11px; color: var(--muted); line-height: 1.45; margin-top: 10px; }
     .keys b { color: var(--text); }
+    .editor-flip {
+      position: sticky;
+      bottom: -8px;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: auto -10px -8px;
+      padding: 8px 8px 12px;
+      background: var(--navy);
+      border-top: 3px solid var(--gold);
+      box-shadow: 0 -8px 18px rgba(11, 31, 58, 0.2);
+    }
+    .editor-flip button {
+      flex: 1;
+      min-height: 48px;
+      background: #fff;
+      color: var(--navy);
+      border: 0;
+      border-radius: 6px;
+      font-weight: 800;
+      font-size: 15px;
+      touch-action: manipulation;
+    }
+    .editor-flip .pos {
+      flex: none;
+      min-width: 58px;
+      text-align: center;
+      color: var(--gold);
+      font-weight: 800;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    body.present .editor-flip { display: none; }
     .present-dock {
       display: none;
       position: fixed;
@@ -487,7 +521,7 @@
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
-      .top, .sidebar, .tools, .hint, .touch-bar, #toast, .handle, .col-resizer, .present-dock, .present-sketch, #pinGate { display: none !important; }
+      .top, .sidebar, .tools, .hint, .touch-bar, #toast, .handle, .col-resizer, .present-dock, .present-sketch, .editor-flip, #pinGate { display: none !important; }
       .app, .layout, .stage {
         display: block;
         width: 100%;
@@ -721,6 +755,11 @@
           <b>Double-click</b> a circle to put initials under the position.<br />
           <b>↑ ↓</b> next play · <b>Ctrl+Z</b> undo · <b>C</b> curve · <b>F</b> flip · <b>Full screen</b> for the kids · saves to this site.
         </p>
+        <div class="editor-flip" id="editorFlip">
+          <button type="button" id="btnEditorPrev">Prev</button>
+          <span class="pos" id="editorPos">1 / 1</span>
+          <button type="button" id="btnEditorNext">Next</button>
+        </div>
       </aside>
     </div>
   </div>
@@ -750,10 +789,10 @@
     <button type="button" id="btnPresentExit" class="present-exit">Exit</button>
   </div>
   <div id="toast"></div>
-  <script src="plays.js?v=cloud28"></script>
-  <script src="playbook-data.js?v=cloud28"></script>
-  <script src="cloud-config.js?v=cloud28"></script>
-  <script src="cloud.js?v=cloud28"></script>
-  <script src="app.js?v=cloud28"></script>
+  <script src="plays.js?v=cloud29"></script>
+  <script src="playbook-data.js?v=cloud29"></script>
+  <script src="cloud-config.js?v=cloud29"></script>
+  <script src="cloud.js?v=cloud29"></script>
+  <script src="app.js?v=cloud29"></script>
 </body>
 </html>
