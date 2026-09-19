@@ -13,6 +13,7 @@
   }
 
   function canPush() {
+    if (isOffline()) return false;
     const c = cfg();
     return !!(c && c.token && c.owner && c.repo && c.path);
   }
@@ -44,33 +45,67 @@
     return /play\.html$/i.test(location.pathname || "") ? "go.html" : "play.html";
   }
 
+  function isOffline() {
+    return typeof navigator !== "undefined" && navigator.onLine === false;
+  }
+
+  function withTimeout(promise, ms) {
+    return new Promise(function (resolve, reject) {
+      var done = false;
+      var timer = setTimeout(function () {
+        if (done) return;
+        done = true;
+        reject(new Error("timeout"));
+      }, ms);
+      promise.then(
+        function (value) {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          resolve(value);
+        },
+        function (err) {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          reject(err);
+        }
+      );
+    });
+  }
+
+  function fetchOk(url, opts, ms) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(function () { ctrl.abort(); }, ms || 5000);
+    return fetch(url, Object.assign({}, opts || {}, { signal: ctrl.signal })).finally(function () {
+      clearTimeout(timer);
+    });
+  }
+
   function reloadFresh() {
-    try {
-      if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
-        navigator.serviceWorker.getRegistrations().then(function (regs) {
-          regs.forEach(function (r) { r.unregister(); });
-        });
-      }
-      if (window.caches && caches.keys) {
-        caches.keys().then(function (keys) {
-          keys.forEach(function (k) { caches.delete(k); });
-        });
-      }
-    } catch (e) {}
+    if (isOffline()) return;
     location.replace(appDir() + otherShell() + "?t=" + Date.now());
   }
 
   function checkBuild() {
+    if (isOffline()) return;
     const local = document.documentElement.getAttribute("data-build") || "";
     if (!local) return;
-    fetch("version.json?t=" + Date.now(), { cache: "no-store" })
+    fetchOk("version.json?t=" + Date.now(), { cache: "no-store" }, 4000)
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (v) {
         if (!v || !v.build || v.build === local) return;
         if (/[?&](t|fresh)=/.test(location.search || "")) return;
+        if (isOffline()) return;
         reloadFresh();
       })
       .catch(function () {});
+  }
+
+  function registerOffline() {
+    if (!("serviceWorker" in navigator)) return;
+    if (location.protocol !== "https:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") return;
+    navigator.serviceWorker.register("sw.js").catch(function () {});
   }
 
   function signOut() {
@@ -143,9 +178,10 @@
     if (!c || !c.owner || !c.repo || !c.path) return null;
     const headers = { Accept: "application/vnd.github+json" };
     if (c.token) headers.Authorization = "Bearer " + c.token;
-    const r = await fetch(
+    const r = await fetchOk(
       api + "/repos/" + c.owner + "/" + c.repo + "/contents/" + c.path,
-      { headers: headers, cache: "no-store" }
+      { headers: headers, cache: "no-store" },
+      5000
     );
     if (!r.ok) return null;
     const meta = await r.json();
@@ -166,7 +202,7 @@
     ];
     for (let i = 0; i < urls.length; i++) {
       try {
-        const r = await fetch(urls[i], { cache: "no-store" });
+        const r = await fetchOk(urls[i], { cache: "no-store" }, 4000);
         if (!r.ok) continue;
         const book = await r.json();
         if (book && Array.isArray(book.plays)) return book;
@@ -176,12 +212,15 @@
   }
 
   async function pull() {
+    if (isOffline()) return null;
     try {
-      const fromApi = await pullFromApi();
-      if (fromApi) return fromApi;
-    } catch (e) {}
-    try {
-      return await pullFromRaw();
+      return await withTimeout((async function () {
+        try {
+          const fromApi = await pullFromApi();
+          if (fromApi) return fromApi;
+        } catch (e) {}
+        return await pullFromRaw();
+      })(), 6000);
     } catch (e) {
       return null;
     }
@@ -203,24 +242,24 @@
         Authorization: "Bearer " + c.token,
         "Content-Type": "application/json",
       };
-      let r = await fetch(api + "/repos/" + c.owner + "/" + c.repo + "/contents/" + c.path, {
+      let r = await fetchOk(api + "/repos/" + c.owner + "/" + c.repo + "/contents/" + c.path, {
         method: "PUT",
         headers: headers,
         body: JSON.stringify(payload),
-      });
+      }, 8000);
       if (r.status === 409 || r.status === 422) {
-        const latest = await fetch(api + "/repos/" + c.owner + "/" + c.repo + "/contents/" + c.path, {
+        const latest = await fetchOk(api + "/repos/" + c.owner + "/" + c.repo + "/contents/" + c.path, {
           headers: { Accept: "application/vnd.github+json", Authorization: "Bearer " + c.token },
-        });
+        }, 5000);
         if (latest.ok) {
           const meta = await latest.json();
           window.RaidersCloud.sha = meta.sha;
           payload.sha = meta.sha;
-          r = await fetch(api + "/repos/" + c.owner + "/" + c.repo + "/contents/" + c.path, {
+          r = await fetchOk(api + "/repos/" + c.owner + "/" + c.repo + "/contents/" + c.path, {
             method: "PUT",
             headers: headers,
             body: JSON.stringify(payload),
-          });
+          }, 8000);
         }
       }
       if (!r.ok) return { ok: false, reason: "http-" + r.status };
@@ -241,6 +280,7 @@
     reloadFresh: reloadFresh,
     pull: pull,
     push: push,
+    isOffline: isOffline,
   };
 
   function wireFresh() {
@@ -268,6 +308,7 @@
         reloadFresh();
       });
     }
+    registerOffline();
     checkBuild();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", wireFresh);

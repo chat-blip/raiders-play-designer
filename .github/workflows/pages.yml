@@ -30,7 +30,7 @@ jobs:
           PLAYBOOK_PIN: ${{ secrets.PLAYBOOK_PIN }}
         run: |
           mkdir -p site
-          cp index.html app.js plays.js playbook.json playbook-data.js pack-assets.js cloud.js robots.txt OPEN-ME.txt .nojekyll site/
+          cp index.html app.js plays.js playbook.json playbook-data.js pack-assets.js cloud.js sw.js manifest.json robots.txt OPEN-ME.txt .nojekyll site/
           python3 - <<'PY'
           import json, os, pathlib, re
           cfg = {

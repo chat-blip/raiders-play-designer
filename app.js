@@ -221,10 +221,11 @@
   }
 
   function pushCloud() {
+    if (navigator.onLine === false) return;
     if (!window.RaidersCloud || !window.RaidersCloud.canPush()) return;
     window.RaidersCloud.push(state.book).then(function (res) {
       if (res && res.ok) return;
-      if (!res || res.reason === "offline") return;
+      if (!res || res.reason === "offline" || res.reason === "network") return;
       toast("Cloud save missed — will try again");
     });
   }
@@ -261,13 +262,32 @@
   async function loadPreferred() {
     state.needCloudPush = false;
     const local = load();
+    if (navigator.onLine === false) {
+      state.needCloudPush = bookOk(local);
+      ensureSets(local);
+      return local;
+    }
     const cloud = window.RaidersCloud ? await window.RaidersCloud.pull() : null;
     if (bookOk(cloud)) {
+      const localAt = bookOk(local) ? local.exportedAt || 0 : 0;
+      const cloudAt = cloud.exportedAt || 0;
+      if (bookOk(local) && localAt > cloudAt) {
+        state.needCloudPush = true;
+        ensureSets(local);
+        return local;
+      }
       ensureSets(cloud);
       return cloud;
     }
+    if (bookOk(local)) state.needCloudPush = true;
     ensureSets(local);
     return local;
+  }
+
+  function syncOfflineChip() {
+    const el = $("offlineChip");
+    if (!el) return;
+    el.hidden = navigator.onLine !== false;
   }
 
   function ensureSets(book) {
@@ -2803,6 +2823,12 @@
     setTool("select");
     render();
     setListFocus("book");
+    syncOfflineChip();
+    window.addEventListener("online", function () {
+      syncOfflineChip();
+      scheduleCloudSave();
+    });
+    window.addEventListener("offline", syncOfflineChip);
     if (state.needCloudPush) scheduleCloudSave();
   }
 

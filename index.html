@@ -7,6 +7,9 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#0b1f3a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <link rel="manifest" href="manifest.json" />
   <title>Raiders Play Designer</title>
   <style>
     :root {
@@ -469,6 +472,21 @@
       padding: 8px 12px; border-radius: 6px; opacity: 0; pointer-events: none; transition: opacity .15s;
     }
     #toast.show { opacity: 1; }
+    #offlineChip {
+      position: fixed;
+      left: 12px;
+      bottom: max(12px, env(safe-area-inset-bottom, 0px));
+      z-index: 40;
+      background: var(--gold);
+      color: var(--navy);
+      font-weight: 800;
+      font-size: 12px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      box-shadow: 0 8px 20px rgba(11, 31, 58, 0.3);
+    }
+    #offlineChip[hidden] { display: none !important; }
+    body.present #offlineChip, body.locked #offlineChip { display: none !important; }
     .player circle { fill: #fff; stroke: #111; stroke-width: 2.4; }
     .player.red circle { fill: #e53935; stroke: #111; }
     .player.gold circle { fill: #f2c14e; stroke: #111; }
@@ -526,7 +544,7 @@
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
-      .top, .sidebar, .tools, .hint, .touch-bar, #toast, .handle, .col-resizer, .present-dock, .present-sketch, .editor-flip, #pinGate { display: none !important; }
+      .top, .sidebar, .tools, .hint, .touch-bar, #toast, .handle, .col-resizer, .present-dock, .present-sketch, .editor-flip, #offlineChip, #pinGate { display: none !important; }
       .app, .layout, .stage {
         display: block;
         width: 100%;
@@ -795,10 +813,11 @@
     <button type="button" id="btnEditorNext">Next</button>
   </div>
   <div id="toast"></div>
-  <script src="plays.js?v=cloud32"></script>
-  <script src="playbook-data.js?v=cloud32"></script>
-  <script src="cloud-config.js?v=cloud32"></script>
-  <script src="cloud.js?v=cloud32"></script>
-  <script src="app.js?v=cloud32"></script>
+  <div id="offlineChip" hidden>Offline — saved on this device</div>
+  <script src="plays.js?v=cloud33"></script>
+  <script src="playbook-data.js?v=cloud33"></script>
+  <script src="cloud-config.js?v=cloud33"></script>
+  <script src="cloud.js?v=cloud33"></script>
+  <script src="app.js?v=cloud33"></script>
 </body>
 </html>
