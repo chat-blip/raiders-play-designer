@@ -167,6 +167,8 @@
     "Maryland Left": { family: "Maryland formation", te: "left", backs: "maryland" },
     "Tight Right": { family: "Tight formation", te: "right", backs: "tight" },
     "Tight Left": { family: "Tight formation", te: "left", backs: "tight" },
+    "SplitBack Left": { family: "SplitBack formation", te: "left", backs: "splitback" },
+    "SplitBack Right": { family: "SplitBack formation", te: "right", backs: "splitback" },
   };
 
   function batmanOffense(teSide) {
@@ -204,6 +206,25 @@
       P("A", "A", "off", mx(598), 486),
       P("X", "X", "off", mx(163), 340),
       P("Z", "Z", "off", mx(597), 536),
+    ];
+  }
+
+  function splitBackOffense(teSide) {
+    function mx(x) {
+      return teSide === "left" ? x : 2 * CX - x;
+    }
+    return [
+      P("LT", "LT", "off", 508, 338),
+      P("LG", "LG", "off", 554, 338),
+      P("C", "C", "off", 600, 338),
+      P("RG", "RG", "off", 646, 338),
+      P("RT", "RT", "off", 692, 338),
+      P("Y", "Y", "off", mx(458), 338),
+      P("QB", "QB", "off", 600, 386),
+      P("B", "B", "off", mx(542), 466),
+      P("A", "A", "off", mx(658), 466),
+      P("X", "X", "off", mx(1045), 352),
+      P("Z", "Z", "off", mx(155), 352),
     ];
   }
 
@@ -260,6 +281,8 @@
       players = marylandOffense(f.te).concat(defensePlayers(defName || "4-4 Base", f.te));
     } else if (f.backs === "tight") {
       players = tightOffense(f.te).concat(defensePlayers(defName || "4-4 Base", f.te));
+    } else if (f.backs === "splitback") {
+      players = splitBackOffense(f.te).concat(defensePlayers(defName || "4-4 Base", f.te));
     } else {
       players = [
         ...oLine(f.te),
