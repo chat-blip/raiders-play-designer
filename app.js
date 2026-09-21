@@ -1390,7 +1390,7 @@
       motion: "Tap a player, then tap where he motions to. Tap Enter to finish. Then switch to Block and tap the player — the block starts at the dashed end.",
       ball: "Click the ball carrier, then tap the path. When the arrow looks right, tap Enter to lock it in.",
       paintRed: "Click a player to mark the ball carrier (red).",
-      paintGold: "Click a player to mark the primary (gold).",
+      paintGold: "Click receivers to mark them gold. Click again to clear. You can mark more than one.",
       addOff: "Click the field to add an offensive player.",
       addDef: "Click the field to add a defender.",
     };
@@ -1912,11 +1912,15 @@
     if (state.tool === "paintRed" || state.tool === "paintGold") {
       if (!pl || pl.side !== "off") return;
       pushUndo();
-      const fill = state.tool === "paintRed" ? "red" : "gold";
-      p.players.forEach((x) => {
-        if (x.side === "off" && x.fill === fill) x.fill = "white";
-      });
-      pl.fill = pl.fill === fill ? "white" : fill;
+      if (state.tool === "paintGold") {
+        pl.fill = pl.fill === "gold" ? "white" : "gold";
+      } else {
+        const on = pl.fill === "red";
+        p.players.forEach((x) => {
+          if (x.side === "off" && x.fill === "red") x.fill = "white";
+        });
+        pl.fill = on ? "white" : "red";
+      }
       render();
       return;
     }
