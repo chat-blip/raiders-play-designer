@@ -2194,16 +2194,23 @@
   }
 
   function customOffByName(name) {
-    return (state.book.customOff || []).find(function (f) { return f.name === name; });
+    const n = String(name || "").toLowerCase();
+    return (state.book.customOff || []).find(function (f) { return String(f.name).toLowerCase() === n; });
   }
 
   function customDefByName(name) {
-    return (state.book.customDef || []).find(function (f) { return f.name === name; });
+    const n = String(name || "").toLowerCase();
+    return (state.book.customDef || []).find(function (f) { return String(f.name).toLowerCase() === n; });
   }
 
   function familyFor(name) {
+    const stock = RaidersPlays.FORMATIONS[name];
+    if (stock && stock.family) return stock.family;
+    const canon = canonicalFormName("off", name);
+    const stock2 = RaidersPlays.FORMATIONS[canon];
+    if (stock2 && stock2.family) return stock2.family;
     if (customOffByName(name)) return "Custom";
-    return (RaidersPlays.FORMATIONS[name] || {}).family || "";
+    return "";
   }
 
   function teFromPlayers(players) {
@@ -2260,6 +2267,27 @@
     return RaidersPlays.DEF_FORMATIONS || [];
   }
 
+  function isBuiltinName(side, name) {
+    const n = String(name || "").toLowerCase();
+    const names = side === "def" ? builtinDefNames() : builtinOffNames();
+    return names.some(function (x) { return String(x).toLowerCase() === n; });
+  }
+
+  function canonicalFormName(side, name) {
+    const n = String(name || "").trim();
+    const names = side === "def" ? builtinDefNames() : builtinOffNames();
+    const hit = names.find(function (x) { return String(x).toLowerCase() === n.toLowerCase(); });
+    return hit || n;
+  }
+
+  function stockPlayers(name, side) {
+    if (side === "def") return templatePlayers(RaidersPlays.defensePlayers(name, "right"), "def");
+    return templatePlayers(
+      RaidersPlays.formationPlayers(name, "4-4 Base").filter(function (pl) { return pl.side === "off"; }),
+      "off"
+    );
+  }
+
   function ensureSelectValue(sel, value) {
     if (!sel || value == null || value === "") return;
     const has = Array.prototype.some.call(sel.options, function (o) { return o.value === value; });
@@ -2283,9 +2311,13 @@
 
   function addSelectGroup(sel, label, forms) {
     if (!forms || !forms.length) return;
+    const skip = {};
+    Array.prototype.forEach.call(sel.options, function (o) { skip[o.value] = true; });
+    const extra = forms.filter(function (f) { return f && f.name && !skip[f.name]; });
+    if (!extra.length) return;
     const g = document.createElement("optgroup");
     g.label = label;
-    forms.slice().sort(function (a, b) {
+    extra.slice().sort(function (a, b) {
       return String(a.name).localeCompare(String(b.name));
     }).forEach(function (f) {
       const o = document.createElement("option");
@@ -2339,16 +2371,53 @@
   }
 
   function askDeleteForm(f) {
-    if (!f) {
-      toast("Tap a saved name first");
+    if (!f || !f.name) {
+      toast("Tap a formation first");
       return;
     }
-    state.studio.askId = f.id || f.name;
-    state.studio.askRec = f;
+    const rec = f.id || f.players ? f : studioCustomByName(f.name) || f;
+    if (isBuiltinName(state.studio.side, rec.name) && !studioCustomByName(rec.name)) {
+      toast("This is still the original " + rec.name + ". Move the spots, then Save changes.");
+      return;
+    }
+    state.studio.askId = rec.id || rec.name;
+    state.studio.askRec = rec;
     const ask = $("studioAsk");
     const text = $("studioAskText");
-    if (text) text.textContent = "Delete “" + f.name + "”? Old plays keep their drawings.";
+    const yes = $("studioAskYes");
+    const builtin = isBuiltinName(state.studio.side, rec.name);
+    if (text) {
+      text.textContent = builtin
+        ? "Reset “" + rec.name + "” to the original? Old plays keep their drawings."
+        : "Delete “" + rec.name + "”? Old plays keep their drawings.";
+    }
+    if (yes) yes.textContent = builtin ? "Reset it" : "Delete it";
     if (ask) ask.hidden = false;
+  }
+
+  function studioCustomByName(name) {
+    const n = String(name || "").toLowerCase();
+    return studioBag().find(function (f) { return String(f.name).toLowerCase() === n; }) || null;
+  }
+
+  function studioFormItems() {
+    if (!state.studio) return [];
+    const builtins = state.studio.side === "def" ? builtinDefNames() : builtinOffNames();
+    const used = {};
+    const items = [];
+    builtins.forEach(function (name) {
+      used[String(name).toLowerCase()] = true;
+      items.push({ name: name, rec: studioCustomByName(name), builtin: true });
+    });
+    studioBag().forEach(function (f) {
+      if (used[String(f.name).toLowerCase()]) return;
+      items.push({ name: f.name, rec: f, builtin: false });
+    });
+    return items;
+  }
+
+  function studioActiveName() {
+    return ((($("studioName") && $("studioName").value) || state.studio.name || "")).trim();
   }
 
   function studioBlankPlayers(side) {
@@ -2359,27 +2428,32 @@
     );
   }
 
-  function fillStudioFrom() {
-    const sel = $("studioFrom");
-    if (!sel || !state.studio) return;
-    sel.innerHTML = "";
-    const blank = document.createElement("option");
-    blank.value = "";
-    blank.textContent = "Start from…";
-    sel.appendChild(blank);
-    addSelectNames(sel, state.studio.side === "def" ? builtinDefNames() : builtinOffNames());
+  function loadStudioNamed(name, useStock) {
+    if (!state.studio) return;
+    hideStudioAsk();
+    const side = state.studio.side;
+    const canon = canonicalFormName(side, name);
+    if (!canon) {
+      studioStartBlank();
+      return;
+    }
+    const rec = studioCustomByName(canon);
+    state.studio.name = canon;
+    state.studio.id = rec && !useStock ? rec.id : (rec ? rec.id : null);
+    if (rec && !useStock) {
+      state.studio.players = templatePlayers(rec.players, side);
+    } else {
+      state.studio.players = stockPlayers(canon, side);
+    }
+    if (side === "off" && RaidersPlays.pinOLine) RaidersPlays.pinOLine(state.studio.players);
+    state.studio.sel = null;
+    if ($("studioName")) $("studioName").value = canon;
+    renderStudio();
   }
 
   function loadStudioForm(f) {
-    hideStudioAsk();
-    state.studio.id = f.id;
-    state.studio.name = f.name;
-    state.studio.players = templatePlayers(f.players, state.studio.side);
-    if (state.studio.side === "off" && RaidersPlays.pinOLine) RaidersPlays.pinOLine(state.studio.players);
-    state.studio.sel = null;
-    if ($("studioName")) $("studioName").value = f.name;
-    if ($("studioFrom")) $("studioFrom").value = "";
-    renderStudio();
+    if (!f) return;
+    loadStudioNamed(f.name);
   }
 
   function setStudioSide(side) {
@@ -2390,10 +2464,13 @@
     }
     hideStudioAsk();
     state.studio.side = side;
-    fillStudioFrom();
-    const bag = studioBag();
-    if (bag.length) loadStudioForm(bag[0]);
-    else studioStartBlank();
+    const p = play();
+    const want = side === "def"
+      ? (($("defSelect") && $("defSelect").value) || (p && p.defense) || "4-4 Base")
+      : (($("formSelect") && $("formSelect").value) || (p && p.formation) || "I Right");
+    const items = studioFormItems();
+    const hit = items.find(function (it) { return it.name === want; });
+    loadStudioNamed(hit ? hit.name : (items[0] ? items[0].name : ""));
   }
 
   function studioStartBlank() {
@@ -2404,7 +2481,6 @@
     state.studio.players = studioBlankPlayers(state.studio.side);
     state.studio.sel = null;
     if ($("studioName")) $("studioName").value = "";
-    if ($("studioFrom")) $("studioFrom").value = "";
     renderStudio();
   }
 
@@ -2418,36 +2494,31 @@
       toast("This play has no " + (side === "def" ? "defense" : "offense") + " to copy");
       return;
     }
-    state.studio.id = null;
-    state.studio.name = "";
+    const name = canonicalFormName(side, side === "def" ? (cur.defense || "") : (cur.formation || ""));
+    const rec = studioCustomByName(name);
+    state.studio.id = rec ? rec.id : null;
+    state.studio.name = name;
     state.studio.players = templatePlayers(spots, side);
     if (side === "off" && RaidersPlays.pinOLine) RaidersPlays.pinOLine(state.studio.players);
     state.studio.sel = null;
-    if ($("studioName")) $("studioName").value = "";
-    if ($("studioFrom")) $("studioFrom").value = "";
+    if ($("studioName")) $("studioName").value = name;
     renderStudio();
   }
 
-  function studioStartFrom() {
+  function studioResetStock() {
     if (!state.studio) return;
-    hideStudioAsk();
-    const name = $("studioFrom").value;
-    if (!name) return;
-    if (state.studio.side === "def") {
-      state.studio.players = templatePlayers(RaidersPlays.defensePlayers(name, "right"), "def");
-    } else {
-      state.studio.players = templatePlayers(
-        RaidersPlays.formationPlayers(name, "4-4 Base").filter(function (pl) { return pl.side === "off"; }),
-        "off"
-      );
+    const name = studioActiveName();
+    if (!name || !isBuiltinName(state.studio.side, name)) {
+      toast("Pick a built-in like I Right first");
+      return;
     }
-    state.studio.id = null;
-    state.studio.sel = null;
-    renderStudio();
+    loadStudioNamed(name, true);
+    toast("Original " + canonicalFormName(state.studio.side, name) + ". Save changes to keep it, or keep editing.");
   }
 
   function renameFormationOnPlays(side, oldName, newName) {
     if (!oldName || oldName === newName) return;
+    if (isBuiltinName(side, oldName)) return;
     (state.book.plays || []).forEach(function (p) {
       if (side === "def") {
         if (p.defense === oldName) p.defense = newName;
@@ -2461,22 +2532,18 @@
   function saveStudio() {
     if (!state.studio) return;
     hideStudioAsk();
-    const name = (($("studioName") && $("studioName").value) || "").trim();
-    if (!name) {
+    const raw = (($("studioName") && $("studioName").value) || "").trim();
+    if (!raw) {
       toast("Name this formation");
       return false;
     }
     const side = state.studio.side;
-    const builtins = side === "def" ? builtinDefNames() : builtinOffNames();
-    if (builtins.indexOf(name) >= 0) {
-      toast("That name is already built in");
-      return false;
-    }
+    const name = canonicalFormName(side, raw);
     let players = templatePlayers(state.studio.players, side);
     if (side === "off" && RaidersPlays.pinOLine) RaidersPlays.pinOLine(players);
     const bag = studioBag();
-    let rec = studioRecord();
-    const nameHit = bag.find(function (f) { return String(f.name).toLowerCase() === name.toLowerCase(); });
+    let rec = studioRecord() || studioCustomByName(name);
+    const nameHit = studioCustomByName(name);
     if (rec && nameHit && nameHit.id !== rec.id) {
       toast("That name is already used");
       return false;
@@ -2498,13 +2565,14 @@
     state.studio.id = rec.id;
     state.studio.name = name;
     state.studio.players = templatePlayers(players, side);
+    if ($("studioName")) $("studioName").value = name;
     state.fillingForms = true;
     fillFormations();
     render();
     state.fillingForms = false;
     scheduleSave();
     renderStudio();
-    toast(wasNew ? "Saved. New plays can use " + name : "Updated " + name + " for new plays");
+    toast("Saved " + name + ". New plays use this. Old plays stay as drawn.");
     return true;
   }
 
@@ -2520,13 +2588,9 @@
       return;
     }
     if (!saveStudio()) return;
-    const flipName = flippedFormationName(name);
-    if (flipName === name) {
+    const flipName = canonicalFormName("off", flippedFormationName(name));
+    if (flipName === canonicalFormName("off", name)) {
       toast("Put Left or Right in the name");
-      return;
-    }
-    if (builtinOffNames().indexOf(flipName) >= 0) {
-      toast("Flip name is already built in");
       return;
     }
     const players = templatePlayers(flipSkillPlayers(state.studio.players), "off");
@@ -2537,6 +2601,7 @@
       rec = { id: RaidersPlays.uid("off"), name: flipName, players: players, te: teFromPlayers(players), side: "off" };
       bag.push(rec);
     } else {
+      rec.name = flipName;
       rec.players = players;
       rec.te = teFromPlayers(players);
     }
@@ -2553,6 +2618,7 @@
     if (!rec) return;
     const id = rec.id;
     const name = rec.name;
+    const builtin = isBuiltinName(state.studio.side, name);
     if (state.studio.side === "def") {
       state.book.customDef = (state.book.customDef || []).filter(function (f) {
         if (id && f.id === id) return false;
@@ -2572,14 +2638,18 @@
     render();
     state.fillingForms = false;
     scheduleSave();
-    const bag = studioBag();
-    if (bag.length) loadStudioForm(bag[0]);
-    else studioStartBlank();
-    toast("Deleted " + name);
+    if (builtin) loadStudioNamed(name, true);
+    else {
+      const items = studioFormItems();
+      if (items.length) loadStudioNamed(items[0].name);
+      else studioStartBlank();
+    }
+    toast(builtin ? "Reset " + name + " to the original" : "Deleted " + name);
   }
 
   function deleteStudio() {
-    askDeleteForm(studioRecord());
+    const name = studioActiveName();
+    askDeleteForm(studioRecord() || studioCustomByName(name) || { name: name });
   }
 
   function confirmStudioDelete() {
@@ -2587,7 +2657,7 @@
     const rec = state.studio.askRec || studioRecord();
     hideStudioAsk();
     if (!rec) {
-      toast("Tap a saved name first");
+      toast("Tap a formation first");
       return;
     }
     deleteStudioRec(rec);
@@ -2595,65 +2665,57 @@
 
   function syncStudioChrome() {
     if (!state.studio) return;
-    const offN = (state.book.customOff || []).length;
-    const defN = (state.book.customDef || []).length;
     document.querySelectorAll("[data-studio-side]").forEach(function (btn) {
       const side = btn.getAttribute("data-studio-side");
       btn.classList.toggle("on", side === state.studio.side);
-      if (side === "off") btn.textContent = offN ? "Offense (" + offN + ")" : "Offense";
-      if (side === "def") btn.textContent = defN ? "Defense (" + defN + ")" : "Defense";
+      if (side === "off") btn.textContent = "Offense";
+      if (side === "def") btn.textContent = "Defense";
     });
     if ($("studioSaveFlip")) $("studioSaveFlip").hidden = state.studio.side === "def";
     if ($("studioSideLabel")) {
       $("studioSideLabel").textContent = state.studio.side === "def" ? "Defense" : "Offense";
     }
-    const rec = studioRecord();
-    if ($("studioSave")) $("studioSave").textContent = rec ? "Save changes" : "Save new";
+    const name = studioActiveName();
+    const rec = studioRecord() || studioCustomByName(name);
+    const known = !!(name && (rec || isBuiltinName(state.studio.side, name)));
+    if ($("studioSave")) $("studioSave").textContent = known ? "Save changes" : "Save new";
+    if ($("studioReset")) $("studioReset").hidden = !isBuiltinName(state.studio.side, name);
     if ($("studioHint")) {
-      $("studioHint").textContent = rec
-        ? "Editing “" + rec.name + "”. Drag the spots, then Save changes. New plays pick this up. Old plays stay as drawn."
-        : "Blank slate. Drag the spots, name it, Save new. Tap a saved name to edit one.";
+      $("studioHint").textContent = name
+        ? "Editing “" + name + "”. Move X and Z, then Save changes. New plays pick this up. Old plays stay as drawn."
+        : "Tap I Right (or any name). Move the spots, then Save changes.";
     }
-    const hint = $("studioListHint");
-    if (hint) hint.hidden = !studioBag().length;
   }
 
   function renderStudioList() {
     const box = $("studioList");
     if (!box || !state.studio) return;
     box.innerHTML = "";
-    const bag = studioBag();
-    if (!bag.length) {
-      const p = document.createElement("p");
-      p.className = "studio-empty";
-      p.textContent = "None yet on " + (state.studio.side === "def" ? "defense" : "offense") + ". Move the players, name it, Save new.";
-      box.appendChild(p);
-      return;
-    }
-    const selected = studioRecord();
-    bag.slice().sort(function (a, b) {
-      return String(a.name).localeCompare(String(b.name));
-    }).forEach(function (f) {
+    const items = studioFormItems();
+    const active = studioActiveName().toLowerCase();
+    items.forEach(function (it) {
       const row = document.createElement("div");
       row.className = "studio-item-row";
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "studio-item" + (selected && selected.id === f.id ? " active" : "");
-      btn.textContent = f.name;
-      btn.addEventListener("click", function () { loadStudioForm(f); });
-      const del = document.createElement("button");
-      del.type = "button";
-      del.className = "studio-item-del";
-      del.textContent = "X";
-      del.title = "Delete " + f.name;
-      del.addEventListener("click", function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        loadStudioForm(f);
-        askDeleteForm(f);
-      });
+      btn.className = "studio-item" + (it.name.toLowerCase() === active ? " active" : "");
+      btn.textContent = it.rec && it.builtin ? it.name + " · saved" : it.name;
+      btn.addEventListener("click", function () { loadStudioNamed(it.name); });
       row.appendChild(btn);
-      row.appendChild(del);
+      if (it.rec) {
+        const del = document.createElement("button");
+        del.type = "button";
+        del.className = "studio-item-del";
+        del.textContent = "X";
+        del.title = it.builtin ? "Reset " + it.name : "Delete " + it.name;
+        del.addEventListener("click", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          loadStudioNamed(it.name);
+          askDeleteForm(it.rec);
+        });
+        row.appendChild(del);
+      }
       box.appendChild(row);
     });
   }
@@ -2762,31 +2824,24 @@
   function openStudio() {
     ensureSets();
     const p = play();
-    const offName = ($("formSelect") && $("formSelect").value) || (p && p.formation) || "";
-    const defName = ($("defSelect") && $("defSelect").value) || (p && p.defense) || "";
-    const off = customOffByName(offName);
-    const def = customDefByName(defName);
     const preferDef = isDefensePlay(p);
-    const side = preferDef && (def || !off) ? "def" : (off || !preferDef ? "off" : "def");
-    const current = side === "def" ? def : off;
-    const bag = side === "def" ? (state.book.customDef || []) : (state.book.customOff || []);
-    const start = current || bag[0] || null;
+    const side = preferDef ? "def" : "off";
+    const name = side === "def"
+      ? (($("defSelect") && $("defSelect").value) || (p && p.defense) || "4-4 Base")
+      : (($("formSelect") && $("formSelect").value) || (p && p.formation) || "I Right");
     state.studio = {
       side: side,
-      id: start ? start.id : null,
-      name: start ? start.name : "",
-      players: start ? templatePlayers(start.players, side) : studioBlankPlayers(side),
+      id: null,
+      name: "",
+      players: studioBlankPlayers(side),
       drag: null,
       sel: null,
       askId: null,
       askRec: null,
     };
-    if (side === "off" && RaidersPlays.pinOLine) RaidersPlays.pinOLine(state.studio.players);
     const el = $("formStudio");
     if (el) el.hidden = false;
-    if ($("studioName")) $("studioName").value = start ? start.name : "";
-    fillStudioFrom();
-    renderStudio();
+    loadStudioNamed(name);
   }
 
   function closeStudio() {
@@ -2806,7 +2861,15 @@
     if ($("studioDone")) $("studioDone").addEventListener("click", closeStudio);
     if ($("studioBlank")) $("studioBlank").addEventListener("click", studioStartBlank);
     if ($("studioCopyPlay")) $("studioCopyPlay").addEventListener("click", studioCopyPlay);
-    if ($("studioFrom")) $("studioFrom").addEventListener("change", studioStartFrom);
+    if ($("studioReset")) $("studioReset").addEventListener("click", studioResetStock);
+    if ($("studioName")) {
+      $("studioName").addEventListener("input", function () {
+        if (!state.studio) return;
+        state.studio.name = $("studioName").value;
+        syncStudioChrome();
+        if (!state.studio.drag) renderStudioList();
+      });
+    }
     if ($("studioSave")) $("studioSave").addEventListener("click", saveStudio);
     if ($("studioSaveFlip")) $("studioSaveFlip").addEventListener("click", saveStudioFlip);
     if ($("studioDelete")) $("studioDelete").addEventListener("click", deleteStudio);

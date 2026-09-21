@@ -779,7 +779,7 @@
       <div class="brand">RAIDERS <span>Play Designer · 4th Grade</span></div>
       <button type="button" id="btnSignOut" class="ghost" title="Forget this device and load a fresh copy of the designer">Sign out</button>
       <button type="button" id="btnReloadFresh" class="ghost" title="Pull the latest designer. Use this if a tablet or phone looks out of date.">Refresh</button>
-      <button type="button" id="btnFormations" class="ghost" title="Make and name your own offense and defense formations. New plays can use them; existing plays stay put.">Formations</button>
+      <button type="button" id="btnFormations" class="ghost" title="Edit I Right or any formation. Move X and Z, Save changes. New plays pick it up; plays you already drew stay put.">Formations</button>
       <div class="spacer"></div>
       <button type="button" id="btnUndo" class="ghost">Undo</button>
       <button type="button" id="btnRedo" class="ghost">Redo</button>
@@ -911,7 +911,7 @@
         </div>
         <div class="field-label" id="defFormLabel">Defense</div>
         <select id="defSelect" style="margin-bottom:8px"></select>
-        <button type="button" class="full" id="btnStudio" style="width:100%;margin:0 0 12px;background:#0b1f3a;color:#fff;border-color:#0b1f3a;font-weight:800" title="Open a blank slate and name your own formations">My formations</button>
+        <button type="button" class="full" id="btnStudio" style="width:100%;margin:0 0 12px;background:#0b1f3a;color:#fff;border-color:#0b1f3a;font-weight:800" title="Edit I Right or any formation and save it for new plays">My formations</button>
         <h2>Kids</h2>
         <p class="field-label" id="kidsHint" style="text-transform:none;letter-spacing:0;font-size:11px;margin-bottom:6px">Names on this play only. Apply copies them to every play.</p>
         <div class="roster" id="rosterGrid"></div>
@@ -947,7 +947,7 @@
           <b>Tap a line</b>, then <b>Delete</b> under the field (or the Delete key).<br />
           <b>Tap Enter</b> on the field (or the Enter key) to finish a ball path, motion, or route.<br />
           <b>Double-click</b> a circle to put initials under the position.<br />
-          <b>Formations</b> opens a window to make and name your own offense and defense. New plays pick them. Plays you already drew stay put.<br />
+          <b>Formations</b> lets you tap I Right, move X and Z, and Save changes. New plays pick it up. Plays you already drew stay put.<br />
           <b>↑ ↓</b> next play · <b>Ctrl+Z</b> undo · <b>C</b> curve · <b>F</b> flip · <b>Full screen</b> for the kids · saves to this site.
         </p>
       </aside>
@@ -957,7 +957,7 @@
     <div class="studio-panel">
       <div class="studio-head">
         <h1>My formations</h1>
-        <p id="studioHint">Tap a saved name to edit it. Drag the spots, then Save changes. New plays pick it up.</p>
+        <p id="studioHint">Tap I Right, move X and Z, then Save changes. New plays pick it up. Old plays stay as drawn.</p>
         <button type="button" id="studioDone">Done</button>
       </div>
       <div class="studio-body">
@@ -969,9 +969,9 @@
           <div class="field-label" id="studioSideLabel">Offense</div>
           <button type="button" class="full" id="studioBlank">Blank slate</button>
           <button type="button" class="full" id="studioCopyPlay">Copy this play</button>
-          <select id="studioFrom" style="margin-bottom:10px"></select>
-          <h2>Saved</h2>
-          <p class="studio-empty" id="studioListHint" style="margin-top:0">Tap a name to edit. X deletes it.</p>
+          <button type="button" class="full" id="studioReset">Reset to original</button>
+          <h2>Formations</h2>
+          <p class="studio-empty" id="studioListHint" style="margin-top:0">Tap I Right. Move X and Z. Save changes.</p>
           <div id="studioList"></div>
           <div id="studioAsk" class="studio-ask" hidden>
             <p id="studioAskText">Delete this formation?</p>
@@ -979,10 +979,10 @@
             <button type="button" class="full" id="studioAskNo">Keep it</button>
           </div>
           <div class="field-label">Name</div>
-          <input id="studioName" maxlength="40" placeholder="Split I Left" style="width:100%;margin-bottom:8px;border:1px solid #c9d3df;border-radius:4px;padding:7px 8px" />
+          <input id="studioName" maxlength="40" placeholder="I Right" style="width:100%;margin-bottom:8px;border:1px solid #c9d3df;border-radius:4px;padding:7px 8px" />
           <button type="button" class="full navy" id="studioSave">Save changes</button>
           <button type="button" class="full" id="studioSaveFlip">Save other side</button>
-          <button type="button" class="full danger" id="studioDelete">Delete this one</button>
+          <button type="button" class="full danger" id="studioDelete">Reset / delete</button>
         </aside>
         <div class="studio-stage">
           <svg id="studioField" viewBox="0 0 1200 720" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -1022,10 +1022,10 @@
   </div>
   <div id="toast"></div>
   <div id="offlineChip" hidden>Offline — saved on this device</div>
-  <script src="plays.js?v=cloud44"></script>
-  <script src="playbook-data.js?v=cloud44"></script>
-  <script src="cloud-config.js?v=cloud44"></script>
-  <script src="cloud.js?v=cloud44"></script>
-  <script src="app.js?v=cloud44"></script>
+  <script src="plays.js?v=cloud45"></script>
+  <script src="playbook-data.js?v=cloud45"></script>
+  <script src="cloud-config.js?v=cloud45"></script>
+  <script src="cloud.js?v=cloud45"></script>
+  <script src="app.js?v=cloud45"></script>
 </body>
 </html>
