@@ -42,7 +42,10 @@
   }
 
   function otherShell() {
-    return /play\.html$/i.test(location.pathname || "") ? "go.html" : "play.html";
+    var p = location.pathname || "";
+    if (/play\.html$/i.test(p)) return "go.html";
+    if (/go\.html$/i.test(p)) return "coach.html";
+    return "play.html";
   }
 
   function isOffline() {
@@ -84,7 +87,16 @@
 
   function reloadFresh() {
     if (isOffline()) return;
-    location.replace(appDir() + otherShell() + "?t=" + Date.now());
+    const go = function () {
+      location.replace(appDir() + otherShell() + "?t=" + Date.now());
+    };
+    if (!("serviceWorker" in navigator)) {
+      go();
+      return;
+    }
+    navigator.serviceWorker.getRegistrations().then(function (regs) {
+      return Promise.all(regs.map(function (reg) { return reg.unregister(); }));
+    }).then(go, go);
   }
 
   function checkBuild() {
@@ -105,7 +117,8 @@
   function registerOffline() {
     if (!("serviceWorker" in navigator)) return;
     if (location.protocol !== "https:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") return;
-    navigator.serviceWorker.register("sw.js").catch(function () {});
+    const build = document.documentElement.getAttribute("data-build") || "dev";
+    navigator.serviceWorker.register("sw.js?v=" + encodeURIComponent(build)).catch(function () {});
   }
 
   function signOut() {
