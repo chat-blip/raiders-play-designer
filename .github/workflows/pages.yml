@@ -52,6 +52,7 @@ jobs:
           pathlib.Path("site/go.html").write_text(text, encoding="utf-8")
           pathlib.Path("site/coach.html").write_text(text, encoding="utf-8")
           pathlib.Path("site/open.html").write_text(text, encoding="utf-8")
+          pathlib.Path("site/forms.html").write_text(text, encoding="utf-8")
           pathlib.Path("site/version.json").write_text(
               json.dumps({"build": "run" + stamp}) + "\n",
               encoding="utf-8",

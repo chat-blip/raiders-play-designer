@@ -49,6 +49,12 @@
       padding: 6px 10px; font-size: 12px; font-weight: 650;
     }
     .top button.ghost { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.35); }
+    .top button#btnFormations {
+      background: var(--gold);
+      color: var(--navy);
+      border: 0;
+      font-weight: 800;
+    }
     .layout {
       display: grid;
       grid-template-columns: var(--side-w, 268px) 7px minmax(240px, 1fr) 7px var(--tool-w, 220px);
@@ -894,7 +900,7 @@
         </div>
         <div class="field-label" id="defFormLabel">Defense</div>
         <select id="defSelect" style="margin-bottom:8px"></select>
-        <button type="button" class="full" id="btnStudio" style="width:100%;margin:0 0 12px" title="Open a blank slate and name your own formations">My formations</button>
+        <button type="button" class="full" id="btnStudio" style="width:100%;margin:0 0 12px;background:#0b1f3a;color:#fff;border-color:#0b1f3a;font-weight:800" title="Open a blank slate and name your own formations">My formations</button>
         <h2>Kids</h2>
         <p class="field-label" id="kidsHint" style="text-transform:none;letter-spacing:0;font-size:11px;margin-bottom:6px">Names on this play only. Apply copies them to every play.</p>
         <div class="roster" id="rosterGrid"></div>
@@ -999,10 +1005,10 @@
   </div>
   <div id="toast"></div>
   <div id="offlineChip" hidden>Offline — saved on this device</div>
-  <script src="plays.js?v=cloud41"></script>
-  <script src="playbook-data.js?v=cloud41"></script>
-  <script src="cloud-config.js?v=cloud41"></script>
-  <script src="cloud.js?v=cloud41"></script>
-  <script src="app.js?v=cloud41"></script>
+  <script src="plays.js?v=cloud42"></script>
+  <script src="playbook-data.js?v=cloud42"></script>
+  <script src="cloud-config.js?v=cloud42"></script>
+  <script src="cloud.js?v=cloud42"></script>
+  <script src="app.js?v=cloud42"></script>
 </body>
 </html>

@@ -43,8 +43,8 @@
 
   function otherShell() {
     var p = location.pathname || "";
-    if (/open\.html$/i.test(p)) return "play.html";
-    return "open.html";
+    if (/forms\.html$/i.test(p)) return "open.html";
+    return "forms.html";
   }
 
   function isOffline() {
