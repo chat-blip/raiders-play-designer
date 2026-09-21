@@ -43,6 +43,8 @@
     cloudTimer: null,
     needCloudPush: false,
     fieldEdit: null,
+    studio: null,
+    fillingForms: false,
   };
 
   const $ = (id) => document.getElementById(id);
@@ -307,6 +309,18 @@
       b.activeSetId = b.sets[0].id;
     }
     if (!b.roster || typeof b.roster !== "object") b.roster = {};
+    if (!Array.isArray(b.customOff)) b.customOff = [];
+    if (!Array.isArray(b.customDef)) b.customDef = [];
+    b.customOff.forEach(function (f) {
+      if (!f.id) f.id = RaidersPlays.uid("off");
+      if (!f.name) f.name = "Untitled";
+      if (!Array.isArray(f.players)) f.players = [];
+    });
+    b.customDef.forEach(function (f) {
+      if (!f.id) f.id = RaidersPlays.uid("def");
+      if (!f.name) f.name = "Untitled";
+      if (!Array.isArray(f.players)) f.players = [];
+    });
     (b.plays || []).forEach(playKids);
     if (!b.kidsSplit) {
       const roster = b.roster;
@@ -1062,9 +1076,9 @@
     if (!p) return;
     $("numInput").value = p.number;
     $("nameInput").value = p.name;
-    $("formSelect").value = p.formation;
+    ensureSelectValue($("formSelect"), p.formation);
     const storedDef = p.defense || "4-4 Base";
-    $("defSelect").value = RaidersPlays.resolveDefName ? RaidersPlays.resolveDefName(storedDef) : storedDef;
+    ensureSelectValue($("defSelect"), RaidersPlays.resolveDefName ? RaidersPlays.resolveDefName(storedDef) : storedDef);
     $("typeSelect").value = p.type === "defense" || p.type === "pass" ? p.type : "run";
     $("notes").value = p.notes || "";
     $("printNum").textContent = p.number;
@@ -1558,7 +1572,7 @@
         });
       }
     }
-    updateTouchBar();
+    if (!(opts && opts.quiet)) updateTouchBar();
   }
 
   function enterLabel(type) {
@@ -2068,7 +2082,10 @@
     const nums = state.book.plays.map((p) => parseInt(p.number, 10) || 0);
     const next = String(Math.max(0, ...nums) + 1).padStart(2, "0");
     const type = cur && cur.type === "defense" ? "defense" : (cur && cur.type === "pass" ? "pass" : "run");
-    const p = RaidersPlays.blankPlay(formation, next, type === "defense" ? "New Defense" : "New Play", type, $("defSelect").value || "4-4 Base");
+    const defName = $("defSelect").value || "4-4 Base";
+    const p = RaidersPlays.blankPlay(formation, next, type === "defense" ? "New Defense" : "New Play", type, defName);
+    p.players = stampPlayers(formation, defName);
+    p.family = familyFor(formation);
     if (type === "defense" && state.book.defRoster) applyDefKidsFromPack(p, state.book.defRoster);
     pushBookUndo();
     state.book.plays.push(p);
@@ -2120,12 +2137,13 @@
   }
 
   function applyFormation() {
+    if (state.fillingForms) return;
     commitPlayFields();
     const name = $("formSelect").value;
     const p = play();
     pushUndo();
     const defName = p.defense || "4-4 Base";
-    const fresh = RaidersPlays.formationPlayers(name, defName);
+    const fresh = stampPlayers(name, defName);
     const oldBy = {};
     p.players.forEach((pl) => {
       oldBy[pl.id] = pl;
@@ -2147,17 +2165,18 @@
       return old ? Object.assign(pl, { fill: old.fill, who: old.who }) : pl;
     });
     p.formation = name;
-    p.family = (RaidersPlays.FORMATIONS[name] || {}).family || "";
+    p.family = familyFor(name);
     render();
   }
 
   function applyDefense() {
+    if (state.fillingForms) return;
     commitPlayFields();
     const name = $("defSelect").value;
     const p = play();
     pushUndo();
-    const te = ((RaidersPlays.FORMATIONS[p.formation] || {}).te) || "right";
-    const def = RaidersPlays.defensePlayers(name, te);
+    const te = teForFormation(p.formation);
+    const def = stampDefense(name, te);
     const pack = isDefensePlay(p) ? captureDefPack(p) : null;
     const keep = p.players.filter((pl) => pl.side !== "def");
     const ids = {};
@@ -2172,6 +2191,534 @@
     p.defense = name;
     if (pack) applyDefKidsFromPack(p, pack);
     render();
+  }
+
+  function customOffByName(name) {
+    return (state.book.customOff || []).find(function (f) { return f.name === name; });
+  }
+
+  function customDefByName(name) {
+    return (state.book.customDef || []).find(function (f) { return f.name === name; });
+  }
+
+  function familyFor(name) {
+    if (customOffByName(name)) return "Custom";
+    return (RaidersPlays.FORMATIONS[name] || {}).family || "";
+  }
+
+  function teFromPlayers(players) {
+    const y = (players || []).find(function (pl) { return pl.id === "Y" || pl.label === "Y"; });
+    return y && y.x < (RaidersPlays.CX || 600) ? "left" : "right";
+  }
+
+  function teForFormation(name) {
+    const c = customOffByName(name);
+    if (c) {
+      if (c.te === "left" || c.te === "right") return c.te;
+      return teFromPlayers(c.players);
+    }
+    return (RaidersPlays.FORMATIONS[name] || {}).te || "right";
+  }
+
+  function templatePlayers(list, side) {
+    return clone(list || []).map(function (pl) {
+      return {
+        id: pl.id,
+        label: pl.label,
+        side: side,
+        x: pl.x,
+        y: pl.y,
+        fill: "white",
+      };
+    });
+  }
+
+  function stampDefense(name, te) {
+    const custom = customDefByName(name);
+    if (custom) return templatePlayers(custom.players, "def");
+    return RaidersPlays.defensePlayers(name, te);
+  }
+
+  function stampPlayers(offName, defName) {
+    const customOff = customOffByName(offName);
+    const te = teForFormation(offName);
+    let off;
+    if (customOff) {
+      off = templatePlayers(customOff.players, "off");
+      if (RaidersPlays.pinOLine) RaidersPlays.pinOLine(off);
+    } else {
+      off = RaidersPlays.formationPlayers(offName, defName).filter(function (pl) { return pl.side === "off"; });
+    }
+    return off.concat(stampDefense(defName, te));
+  }
+
+  function builtinOffNames() {
+    return Object.keys(RaidersPlays.FORMATIONS);
+  }
+
+  function builtinDefNames() {
+    return RaidersPlays.DEF_FORMATIONS || [];
+  }
+
+  function ensureSelectValue(sel, value) {
+    if (!sel || value == null || value === "") return;
+    const has = Array.prototype.some.call(sel.options, function (o) { return o.value === value; });
+    if (!has) {
+      const o = document.createElement("option");
+      o.value = value;
+      o.textContent = value;
+      sel.appendChild(o);
+    }
+    sel.value = value;
+  }
+
+  function addSelectNames(sel, names) {
+    names.forEach(function (name) {
+      const o = document.createElement("option");
+      o.value = name;
+      o.textContent = name;
+      sel.appendChild(o);
+    });
+  }
+
+  function addSelectGroup(sel, label, forms) {
+    if (!forms || !forms.length) return;
+    const g = document.createElement("optgroup");
+    g.label = label;
+    forms.slice().sort(function (a, b) {
+      return String(a.name).localeCompare(String(b.name));
+    }).forEach(function (f) {
+      const o = document.createElement("option");
+      o.value = f.name;
+      o.textContent = f.name;
+      g.appendChild(o);
+    });
+    sel.appendChild(g);
+  }
+
+  function flippedFormationName(name) {
+    if (/left/i.test(name)) return name.replace(/left/ig, "Right");
+    if (/right/i.test(name)) return name.replace(/right/ig, "Left");
+    return name + " (flip)";
+  }
+
+  function flipSkillPlayers(players) {
+    const cx = RaidersPlays.CX || 600;
+    const out = clone(players);
+    out.forEach(function (pl) {
+      if (RaidersPlays.isOLine && RaidersPlays.isOLine(pl)) return;
+      pl.x = 2 * cx - pl.x;
+    });
+    if (RaidersPlays.pinOLine) RaidersPlays.pinOLine(out);
+    return out;
+  }
+
+  function studioBag() {
+    if (!state.studio) return [];
+    return state.studio.side === "def" ? state.book.customDef : state.book.customOff;
+  }
+
+  function studioBlankPlayers(side) {
+    if (side === "def") return templatePlayers(RaidersPlays.defensePlayers("4-4 Base", "right"), "def");
+    return templatePlayers(
+      RaidersPlays.formationPlayers("I Left", "4-4 Base").filter(function (pl) { return pl.side === "off"; }),
+      "off"
+    );
+  }
+
+  function fillStudioFrom() {
+    const sel = $("studioFrom");
+    if (!sel || !state.studio) return;
+    sel.innerHTML = "";
+    const blank = document.createElement("option");
+    blank.value = "";
+    blank.textContent = "Start from…";
+    sel.appendChild(blank);
+    addSelectNames(sel, state.studio.side === "def" ? builtinDefNames() : builtinOffNames());
+  }
+
+  function loadStudioForm(f) {
+    state.studio.id = f.id;
+    state.studio.name = f.name;
+    state.studio.players = templatePlayers(f.players, state.studio.side);
+    state.studio.sel = null;
+    if ($("studioName")) $("studioName").value = f.name;
+    if ($("studioFrom")) $("studioFrom").value = "";
+    renderStudio();
+  }
+
+  function setStudioSide(side) {
+    if (!state.studio || state.studio.side === side) {
+      syncStudioChrome();
+      return;
+    }
+    state.studio.side = side;
+    state.studio.id = null;
+    state.studio.name = "";
+    state.studio.players = studioBlankPlayers(side);
+    state.studio.sel = null;
+    if ($("studioName")) $("studioName").value = "";
+    fillStudioFrom();
+    renderStudio();
+  }
+
+  function studioStartBlank() {
+    if (!state.studio) return;
+    state.studio.id = null;
+    state.studio.name = "";
+    state.studio.players = studioBlankPlayers(state.studio.side);
+    state.studio.sel = null;
+    if ($("studioName")) $("studioName").value = "";
+    if ($("studioFrom")) $("studioFrom").value = "";
+    renderStudio();
+  }
+
+  function studioCopyPlay() {
+    if (!state.studio) return;
+    const cur = play();
+    const side = state.studio.side === "def" ? "def" : "off";
+    const spots = (cur.players || []).filter(function (pl) { return pl.side === side; });
+    if (!spots.length) {
+      toast("This play has no " + (side === "def" ? "defense" : "offense") + " to copy");
+      return;
+    }
+    state.studio.id = null;
+    state.studio.name = "";
+    state.studio.players = templatePlayers(spots, side);
+    if (side === "off" && RaidersPlays.pinOLine) RaidersPlays.pinOLine(state.studio.players);
+    state.studio.sel = null;
+    if ($("studioName")) $("studioName").value = "";
+    if ($("studioFrom")) $("studioFrom").value = "";
+    renderStudio();
+  }
+
+  function studioStartFrom() {
+    if (!state.studio) return;
+    const name = $("studioFrom").value;
+    if (!name) return;
+    if (state.studio.side === "def") {
+      state.studio.players = templatePlayers(RaidersPlays.defensePlayers(name, "right"), "def");
+    } else {
+      state.studio.players = templatePlayers(
+        RaidersPlays.formationPlayers(name, "4-4 Base").filter(function (pl) { return pl.side === "off"; }),
+        "off"
+      );
+    }
+    state.studio.id = null;
+    state.studio.sel = null;
+    renderStudio();
+  }
+
+  function renameFormationOnPlays(side, oldName, newName) {
+    if (!oldName || oldName === newName) return;
+    (state.book.plays || []).forEach(function (p) {
+      if (side === "def") {
+        if (p.defense === oldName) p.defense = newName;
+      } else if (p.formation === oldName) {
+        p.formation = newName;
+        p.family = familyFor(newName);
+      }
+    });
+  }
+
+  function saveStudio() {
+    if (!state.studio) return;
+    const name = (($("studioName") && $("studioName").value) || "").trim();
+    if (!name) {
+      toast("Name this formation");
+      return false;
+    }
+    const side = state.studio.side;
+    const builtins = side === "def" ? builtinDefNames() : builtinOffNames();
+    if (builtins.indexOf(name) >= 0) {
+      toast("That name is already built in");
+      return false;
+    }
+    let players = templatePlayers(state.studio.players, side);
+    if (side === "off" && RaidersPlays.pinOLine) RaidersPlays.pinOLine(players);
+    const bag = studioBag();
+    let rec = state.studio.id ? bag.find(function (f) { return f.id === state.studio.id; }) : null;
+    const nameHit = bag.find(function (f) { return String(f.name).toLowerCase() === name.toLowerCase(); });
+    if (!rec && nameHit) rec = nameHit;
+    if (rec && nameHit && nameHit.id !== rec.id) {
+      toast("That name is already used");
+      return false;
+    }
+    const te = teFromPlayers(players);
+    const oldName = rec ? rec.name : null;
+    if (!rec) {
+      rec = { id: RaidersPlays.uid(side === "def" ? "def" : "off"), name: name, players: players, te: te, side: side };
+      bag.push(rec);
+    } else {
+      rec.name = name;
+      rec.players = players;
+      rec.te = te;
+      rec.side = side;
+      if (oldName && oldName !== name) renameFormationOnPlays(side, oldName, name);
+    }
+    state.studio.id = rec.id;
+    state.studio.name = name;
+    state.studio.players = templatePlayers(players, side);
+    state.fillingForms = true;
+    fillFormations();
+    render();
+    state.fillingForms = false;
+    scheduleSave();
+    renderStudio();
+    toast("Saved. New plays can use " + name);
+    return true;
+  }
+
+  function saveStudioFlip() {
+    if (!state.studio) return;
+    if (state.studio.side !== "off") {
+      toast("Other side is for offense");
+      return;
+    }
+    const name = (($("studioName") && $("studioName").value) || "").trim();
+    if (!name) {
+      toast("Name this formation first");
+      return;
+    }
+    if (!saveStudio()) return;
+    const flipName = flippedFormationName(name);
+    if (flipName === name) {
+      toast("Put Left or Right in the name");
+      return;
+    }
+    if (builtinOffNames().indexOf(flipName) >= 0) {
+      toast("Flip name is already built in");
+      return;
+    }
+    const players = templatePlayers(flipSkillPlayers(state.studio.players), "off");
+    if (RaidersPlays.pinOLine) RaidersPlays.pinOLine(players);
+    const bag = state.book.customOff;
+    let rec = bag.find(function (f) { return String(f.name).toLowerCase() === flipName.toLowerCase(); });
+    if (!rec) {
+      rec = { id: RaidersPlays.uid("off"), name: flipName, players: players, te: teFromPlayers(players), side: "off" };
+      bag.push(rec);
+    } else {
+      rec.players = players;
+      rec.te = teFromPlayers(players);
+    }
+    state.fillingForms = true;
+    fillFormations();
+    render();
+    state.fillingForms = false;
+    scheduleSave();
+    renderStudio();
+    toast("Also saved " + flipName);
+  }
+
+  function deleteStudio() {
+    if (!state.studio || !state.studio.id) {
+      toast("Pick a saved formation");
+      return;
+    }
+    if (!window.confirm("Delete this formation? Plays you already drew keep their spots.")) return;
+    const id = state.studio.id;
+    if (state.studio.side === "def") {
+      state.book.customDef = (state.book.customDef || []).filter(function (f) { return f.id !== id; });
+    } else {
+      state.book.customOff = (state.book.customOff || []).filter(function (f) { return f.id !== id; });
+    }
+    state.fillingForms = true;
+    fillFormations();
+    render();
+    state.fillingForms = false;
+    scheduleSave();
+    studioStartBlank();
+    toast("Formation deleted");
+  }
+
+  function syncStudioChrome() {
+    if (!state.studio) return;
+    document.querySelectorAll("[data-studio-side]").forEach(function (btn) {
+      btn.classList.toggle("on", btn.getAttribute("data-studio-side") === state.studio.side);
+    });
+    if ($("studioSaveFlip")) $("studioSaveFlip").hidden = state.studio.side === "def";
+    if ($("studioSideLabel")) {
+      $("studioSideLabel").textContent = state.studio.side === "def" ? "Defense" : "Offense";
+    }
+  }
+
+  function renderStudioList() {
+    const box = $("studioList");
+    if (!box || !state.studio) return;
+    box.innerHTML = "";
+    const bag = studioBag();
+    if (!bag.length) {
+      const p = document.createElement("p");
+      p.className = "studio-empty";
+      p.textContent = "None yet. Move the players, name it, Save.";
+      box.appendChild(p);
+      return;
+    }
+    bag.slice().sort(function (a, b) {
+      return String(a.name).localeCompare(String(b.name));
+    }).forEach(function (f) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "studio-item" + (state.studio.id === f.id ? " active" : "");
+      btn.textContent = f.name;
+      btn.addEventListener("click", function () { loadStudioForm(f); });
+      box.appendChild(btn);
+    });
+  }
+
+  function renderStudio() {
+    const svg = $("studioField");
+    if (!svg || !state.studio) return;
+    syncStudioChrome();
+    renderStudioList();
+    svg.innerHTML = "";
+    const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    bg.setAttribute("width", "1200");
+    bg.setAttribute("height", "720");
+    bg.setAttribute("fill", "#ffffff");
+    svg.appendChild(bg);
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.setAttribute("class", "play");
+    svg.appendChild(g);
+    const fake = {
+      type: state.studio.side === "def" ? "defense" : "run",
+      players: state.studio.players,
+      assignments: [],
+      kids: {},
+    };
+    const prevSel = state.selected;
+    state.selected = state.studio.sel ? { kind: "player", id: state.studio.sel } : null;
+    paintPlay(fake, g, { interactive: true, quiet: true });
+    state.selected = prevSel;
+  }
+
+  function studioSvgPoint(evt) {
+    const svg = $("studioField");
+    const pt = svg.createSVGPoint();
+    pt.x = evt.clientX;
+    pt.y = evt.clientY;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return { x: 0, y: 0 };
+    const loc = pt.matrixTransform(ctm.inverse());
+    let x = loc.x;
+    let y = loc.y;
+    if (state.snap && !evt.altKey) {
+      x = Math.round(x / 4) * 4;
+      y = Math.round(y / 4) * 4;
+    }
+    return { x: x, y: y };
+  }
+
+  function hitStudioPlayer(pt) {
+    let best = null;
+    let bestD = 1e9;
+    const bigDef = state.studio.side === "def";
+    (state.studio.players || []).forEach(function (pl) {
+      const d = dist(pt, pl);
+      const lim = pl.side === "def" ? (bigDef ? DEF_S_BIG + 8 : DEF_S + 6) : R + 6;
+      if (d <= lim && d < bestD) {
+        bestD = d;
+        best = pl;
+      }
+    });
+    return best;
+  }
+
+  function onStudioDown(evt) {
+    if (!state.studio || evt.button !== 0) return;
+    evt.preventDefault();
+    const pt = studioSvgPoint(evt);
+    const pl = hitStudioPlayer(pt);
+    if (!pl) {
+      state.studio.sel = null;
+      renderStudio();
+      return;
+    }
+    state.studio.sel = pl.id;
+    if (state.studio.side === "off" && RaidersPlays.isOLine && RaidersPlays.isOLine(pl)) {
+      toast("OL stays planted");
+      renderStudio();
+      return;
+    }
+    state.studio.drag = { id: pl.id, last: pt };
+    try { evt.currentTarget.setPointerCapture(evt.pointerId); } catch (e) {}
+    renderStudio();
+  }
+
+  function onStudioMove(evt) {
+    if (!state.studio || !state.studio.drag) return;
+    evt.preventDefault();
+    const pt = studioSvgPoint(evt);
+    const pl = state.studio.players.find(function (x) { return x.id === state.studio.drag.id; });
+    if (!pl) return;
+    pl.x += pt.x - state.studio.drag.last.x;
+    pl.y += pt.y - state.studio.drag.last.y;
+    state.studio.drag.last = pt;
+    if (state.studio.side === "off" && RaidersPlays.pinOLine) RaidersPlays.pinOLine(state.studio.players);
+    renderStudio();
+  }
+
+  function onStudioUp() {
+    if (!state.studio) return;
+    if (state.studio.drag && state.studio.side === "off" && RaidersPlays.pinOLine) {
+      RaidersPlays.pinOLine(state.studio.players);
+    }
+    state.studio.drag = null;
+    renderStudio();
+  }
+
+  function openStudio() {
+    ensureSets();
+    const side = isDefensePlay(play()) ? "def" : "off";
+    state.studio = {
+      side: side,
+      id: null,
+      name: "",
+      players: studioBlankPlayers(side),
+      drag: null,
+      sel: null,
+    };
+    const el = $("formStudio");
+    if (el) el.hidden = false;
+    if ($("studioName")) $("studioName").value = "";
+    fillStudioFrom();
+    renderStudio();
+  }
+
+  function closeStudio() {
+    if ($("formStudio")) $("formStudio").hidden = true;
+    state.studio = null;
+  }
+
+  function bindStudio() {
+    if (!$("formStudio")) return;
+    if ($("formStudio")) {
+      $("formStudio").addEventListener("click", function (e) {
+        if (e.target === $("formStudio")) closeStudio();
+      });
+    }
+    if ($("btnFormations")) $("btnFormations").addEventListener("click", openStudio);
+    if ($("btnStudio")) $("btnStudio").addEventListener("click", openStudio);
+    if ($("studioDone")) $("studioDone").addEventListener("click", closeStudio);
+    if ($("studioBlank")) $("studioBlank").addEventListener("click", studioStartBlank);
+    if ($("studioCopyPlay")) $("studioCopyPlay").addEventListener("click", studioCopyPlay);
+    if ($("studioFrom")) $("studioFrom").addEventListener("change", studioStartFrom);
+    if ($("studioSave")) $("studioSave").addEventListener("click", saveStudio);
+    if ($("studioSaveFlip")) $("studioSaveFlip").addEventListener("click", saveStudioFlip);
+    if ($("studioDelete")) $("studioDelete").addEventListener("click", deleteStudio);
+    document.querySelectorAll("[data-studio-side]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        setStudioSide(btn.getAttribute("data-studio-side"));
+      });
+    });
+    const svg = $("studioField");
+    if (svg) {
+      svg.addEventListener("pointerdown", onStudioDown);
+      svg.addEventListener("pointermove", onStudioMove);
+      svg.addEventListener("pointerup", onStudioUp);
+      svg.addEventListener("pointercancel", onStudioUp);
+      svg.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+    }
   }
 
   function pushBookUndo() {
@@ -2774,6 +3321,7 @@
     document.addEventListener("keydown", (e) => {
       const typing = /INPUT|TEXTAREA|SELECT/.test((e.target || {}).tagName);
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+        if (state.studio) return;
         e.preventDefault();
         if (state.present) {
           undoSketch();
@@ -2785,11 +3333,16 @@
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
+        if (state.studio) {
+          saveStudio();
+          return;
+        }
         save();
         toast("Saved");
         return;
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") {
+        if (state.studio) return;
         e.preventDefault();
         duplicatePlay();
         return;
@@ -2800,6 +3353,11 @@
         return;
       }
       if (e.key === "Escape") {
+        if (state.studio) {
+          e.preventDefault();
+          closeStudio();
+          return;
+        }
         if (state.present) {
           e.preventDefault();
           exitPresent();
@@ -2811,6 +3369,7 @@
         return;
       }
       if (typing) return;
+      if (state.studio) return;
       if (state.present) {
         if (e.key === "ArrowDown" || e.key === "ArrowUp") {
           e.preventDefault();
@@ -2838,31 +3397,29 @@
       }
       if (e.key === "f" || e.key === "F") flipCurrent();
     });
+    bindStudio();
   }
 
   function fillFormations() {
     const sel = $("formSelect");
+    const prevOff = sel.value;
     sel.innerHTML = "";
-    Object.keys(RaidersPlays.FORMATIONS).forEach((name) => {
-      const o = document.createElement("option");
-      o.value = name;
-      o.textContent = name;
-      sel.appendChild(o);
-    });
+    addSelectNames(sel, builtinOffNames());
+    addSelectGroup(sel, "My formations", (state.book && state.book.customOff) || []);
+    if (prevOff) ensureSelectValue(sel, prevOff);
     const def = $("defSelect");
+    const prevDef = def.value;
     def.innerHTML = "";
-    (RaidersPlays.DEF_FORMATIONS || []).forEach((name) => {
-      const o = document.createElement("option");
-      o.value = name;
-      o.textContent = name;
-      def.appendChild(o);
-    });
+    addSelectNames(def, builtinDefNames());
+    addSelectGroup(def, "My formations", (state.book && state.book.customDef) || []);
+    if (prevDef) ensureSelectValue(def, prevDef);
   }
 
   async function boot() {
     if (window.RaidersCloud) await window.RaidersCloud.unlock();
     fillFormations();
     state.book = await loadPreferred();
+    fillFormations();
     state.playId = state.book.plays[0].id;
     bind();
     const ui = loadUi();

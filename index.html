@@ -440,12 +440,13 @@
     body.present .los { stroke-width: 3.2; }
     body.present .present-bar button { padding: 10px 18px; font-size: 16px; }
     body.present .present-bar .pos { font-size: 16px; }
+    body.present #formStudio { display: none !important; }
     @media (max-height: 900px) {
       body.present .sheet-head, body.present .sheet-foot {
         height: 80px; min-height: 80px; max-height: 80px; padding: 8px 14px;
       }
     }
-    body.locked .app, body.locked .present-dock, body.locked .present-sketch, body.locked .editor-flip { visibility: hidden; }
+    body.locked .app, body.locked .present-dock, body.locked .present-sketch, body.locked .editor-flip, body.locked #formStudio { visibility: hidden; }
     #pinGate {
       position: fixed; inset: 0; z-index: 80;
       display: flex; align-items: center; justify-content: center;
@@ -483,6 +484,130 @@
       border: 1px solid #c9d3df;
     }
     #pinErr { min-height: 18px; margin: 8px 0 0; font-size: 12px; color: var(--red); }
+    #formStudio {
+      position: fixed; inset: 0; z-index: 70;
+      display: flex; align-items: stretch; justify-content: center;
+      background: rgba(11, 31, 58, 0.88);
+      padding: 16px;
+    }
+    #formStudio[hidden] { display: none !important; }
+    #formStudio .studio-panel {
+      width: min(1180px, 100%);
+      height: 100%;
+      min-height: 0;
+      background: #fff;
+      border-top: 4px solid var(--gold);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 18px 50px rgba(0,0,0,.28);
+    }
+    #formStudio .studio-head {
+      background: var(--navy);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+    }
+    #formStudio .studio-head h1 {
+      margin: 0;
+      font-size: 14px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--gold);
+      white-space: nowrap;
+    }
+    #formStudio .studio-head p {
+      flex: 1;
+      margin: 0;
+      font-size: 12px;
+      color: #c9d3df;
+    }
+    #formStudio .studio-head button {
+      background: #fff;
+      color: var(--navy);
+      border: 0;
+      border-radius: 4px;
+      padding: 7px 12px;
+      font-weight: 750;
+    }
+    #formStudio .studio-body {
+      display: grid;
+      grid-template-columns: 250px minmax(0, 1fr);
+      min-height: 0;
+      flex: 1;
+    }
+    #formStudio .studio-side {
+      background: var(--panel);
+      border-right: 1px solid #d5dde7;
+      padding: 10px;
+      overflow: auto;
+    }
+    #formStudio .studio-side h2 { margin: 10px 0 6px; }
+    #formStudio .studio-side .row button {
+      flex: 1;
+      border: 1px solid #c9d3df;
+      background: #fff;
+      border-radius: 4px;
+      padding: 7px 8px;
+      font-weight: 700;
+    }
+    #formStudio .studio-side .row button.on {
+      background: var(--navy);
+      color: #fff;
+      border-color: var(--navy);
+    }
+    #formStudio .studio-side select,
+    #formStudio .studio-side input {
+      width: 100%;
+      border: 1px solid #c9d3df;
+      border-radius: 4px;
+      padding: 7px 8px;
+      background: #fff;
+      margin-bottom: 8px;
+    }
+    #formStudio .studio-side .full {
+      width: 100%;
+      margin: 0 0 6px;
+      border: 1px solid #c9d3df;
+      background: #fff;
+      border-radius: 4px;
+      padding: 7px 8px;
+      font-weight: 700;
+    }
+    #formStudio .studio-side .full.navy {
+      background: var(--navy);
+      color: #fff;
+      border-color: var(--navy);
+    }
+    #formStudio .studio-side .full.danger { color: var(--red); }
+    #studioList { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; min-height: 48px; }
+    .studio-item {
+      width: 100%;
+      text-align: left;
+      border: 1px solid #c9d3df;
+      background: #fff;
+      border-radius: 4px;
+      padding: 7px 8px;
+      font-weight: 700;
+    }
+    .studio-item.active { border-color: var(--navy); background: #e8eef6; }
+    .studio-empty { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
+    #formStudio .studio-stage { background: #fff; min-height: 0; min-width: 0; }
+    svg#studioField {
+      width: 100%; height: 100%; min-height: 420px;
+      display: block; touch-action: none; cursor: grab;
+      background: #fff;
+      -webkit-user-select: none; user-select: none;
+    }
+    svg#studioField text { pointer-events: none; }
+    @media (max-width: 820px) {
+      #formStudio { padding: 8px; }
+      #formStudio .studio-body { grid-template-columns: 1fr; grid-template-rows: auto minmax(320px, 1fr); }
+      #formStudio .studio-side { border-right: 0; border-bottom: 1px solid #d5dde7; max-height: 38vh; }
+    }
     #toast {
       position: fixed; bottom: 16px; right: 16px; background: var(--navy); color: #fff;
       padding: 8px 12px; border-radius: 6px; opacity: 0; pointer-events: none; transition: opacity .15s;
@@ -560,7 +685,7 @@
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
-      .top, .sidebar, .tools, .hint, .touch-bar, #toast, .handle, .col-resizer, .present-dock, .present-sketch, .editor-flip, #offlineChip, #pinGate { display: none !important; }
+      .top, .sidebar, .tools, .hint, .touch-bar, #toast, .handle, .col-resizer, .present-dock, .present-sketch, .editor-flip, #offlineChip, #pinGate, #formStudio { display: none !important; }
       .app, .layout, .stage {
         display: block;
         width: 100%;
@@ -637,6 +762,7 @@
       <div class="brand">RAIDERS <span>Play Designer · 4th Grade</span></div>
       <button type="button" id="btnSignOut" class="ghost" title="Forget this device and load a fresh copy of the designer">Sign out</button>
       <button type="button" id="btnReloadFresh" class="ghost" title="Pull the latest designer. Use this if a tablet or phone looks out of date.">Refresh</button>
+      <button type="button" id="btnFormations" class="ghost" title="Make and name your own offense and defense formations. New plays can use them; existing plays stay put.">Formations</button>
       <div class="spacer"></div>
       <button type="button" id="btnUndo" class="ghost">Undo</button>
       <button type="button" id="btnRedo" class="ghost">Redo</button>
@@ -767,7 +893,8 @@
           <select id="formSelect" style="margin-bottom:8px"></select>
         </div>
         <div class="field-label" id="defFormLabel">Defense</div>
-        <select id="defSelect" style="margin-bottom:12px"></select>
+        <select id="defSelect" style="margin-bottom:8px"></select>
+        <button type="button" class="full" id="btnStudio" style="width:100%;margin:0 0 12px" title="Open a blank slate and name your own formations">My formations</button>
         <h2>Kids</h2>
         <p class="field-label" id="kidsHint" style="text-transform:none;letter-spacing:0;font-size:11px;margin-bottom:6px">Names on this play only. Apply copies them to every play.</p>
         <div class="roster" id="rosterGrid"></div>
@@ -803,9 +930,41 @@
           <b>Tap a line</b>, then <b>Delete</b> under the field (or the Delete key).<br />
           <b>Tap Enter</b> on the field (or the Enter key) to finish a ball path, motion, or route.<br />
           <b>Double-click</b> a circle to put initials under the position.<br />
+          <b>Formations</b> opens a window to make and name your own offense and defense. New plays pick them. Plays you already drew stay put.<br />
           <b>↑ ↓</b> next play · <b>Ctrl+Z</b> undo · <b>C</b> curve · <b>F</b> flip · <b>Full screen</b> for the kids · saves to this site.
         </p>
       </aside>
+    </div>
+  </div>
+  <div id="formStudio" hidden>
+    <div class="studio-panel">
+      <div class="studio-head">
+        <h1>My formations</h1>
+        <p>Blank slate, drag the spots, name it, Save. New plays can use it. Plays you already drew keep their drawings.</p>
+        <button type="button" id="studioDone">Done</button>
+      </div>
+      <div class="studio-body">
+        <aside class="studio-side">
+          <div class="row">
+            <button type="button" data-studio-side="off">Offense</button>
+            <button type="button" data-studio-side="def">Defense</button>
+          </div>
+          <div class="field-label" id="studioSideLabel">Offense</div>
+          <button type="button" class="full" id="studioBlank">Blank slate</button>
+          <button type="button" class="full" id="studioCopyPlay">Copy this play</button>
+          <select id="studioFrom" style="margin-bottom:10px"></select>
+          <h2>Saved</h2>
+          <div id="studioList"></div>
+          <div class="field-label">Name</div>
+          <input id="studioName" maxlength="40" placeholder="Split I Left" style="width:100%;margin-bottom:8px;border:1px solid #c9d3df;border-radius:4px;padding:7px 8px" />
+          <button type="button" class="full navy" id="studioSave">Save</button>
+          <button type="button" class="full" id="studioSaveFlip">Save other side</button>
+          <button type="button" class="full danger" id="studioDelete">Delete</button>
+        </aside>
+        <div class="studio-stage">
+          <svg id="studioField" viewBox="0 0 1200 720" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+      </div>
     </div>
   </div>
   <div id="pinGate" hidden>
@@ -840,10 +999,10 @@
   </div>
   <div id="toast"></div>
   <div id="offlineChip" hidden>Offline — saved on this device</div>
-  <script src="plays.js?v=cloud40"></script>
-  <script src="playbook-data.js?v=cloud40"></script>
-  <script src="cloud-config.js?v=cloud40"></script>
-  <script src="cloud.js?v=cloud40"></script>
-  <script src="app.js?v=cloud40"></script>
+  <script src="plays.js?v=cloud41"></script>
+  <script src="playbook-data.js?v=cloud41"></script>
+  <script src="cloud-config.js?v=cloud41"></script>
+  <script src="cloud.js?v=cloud41"></script>
+  <script src="app.js?v=cloud41"></script>
 </body>
 </html>
