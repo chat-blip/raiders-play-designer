@@ -32,6 +32,8 @@
     present: false,
     favOnly: false,
     playSort: "manual",
+    playTag: "all",
+    playKindFilter: "all",
     sketch: [],
     sketchStroke: null,
     drag: null,
@@ -142,52 +144,7 @@
       }
       if (meta) meta.innerHTML = "<b>" + escapeHtml(playListFormation(p)) + "</b> " + escapeHtml(p.name);
     });
-    syncQuickPlay();
-    syncQuickPlay();
     scheduleFitChrome();
-  }
-
-  function syncQuickPlay() {
-    const p = play();
-    if (!p) return;
-    const letter = String(p.number || "").trim().toUpperCase();
-    document.querySelectorAll("#letterBar [data-letter]").forEach(function (btn) {
-      btn.classList.toggle("on", btn.getAttribute("data-letter") === letter);
-    });
-    const kind = p.type === "defense" || p.type === "pass" ? p.type : "run";
-    document.querySelectorAll("#typeBar [data-type]").forEach(function (btn) {
-      btn.classList.toggle("on", btn.getAttribute("data-type") === kind);
-    });
-    if ($("typeSelect")) $("typeSelect").value = kind;
-  }
-
-  function setPlayLetter(letter) {
-    const p = play();
-    if (!p || !letter) return;
-    commitPlayFields();
-    if (String(p.number || "") === letter) {
-      syncQuickPlay();
-      return;
-    }
-    pushUndo();
-    p.number = letter;
-    if ($("numInput")) $("numInput").value = letter;
-    render();
-  }
-
-  function setPlayKind(type) {
-    const p = play();
-    if (!p) return;
-    const next = type === "defense" || type === "pass" ? type : "run";
-    commitPlayFields();
-    if (p.type === next) {
-      syncQuickPlay();
-      return;
-    }
-    pushUndo();
-    p.type = next;
-    if ($("typeSelect")) $("typeSelect").value = next;
-    render();
   }
 
   function bindPlayField(id, apply) {
@@ -904,17 +861,49 @@
 
   function visibleBookPlays() {
     const q = (($("playSearch") && $("playSearch").value) || "").toLowerCase();
-    const filter = ($("playFilter") && $("playFilter").value) || "all";
+    const tag = String(state.playTag || "all").toUpperCase();
+    const kind = state.playKindFilter || "all";
     const filtered = state.book.plays.filter(function (p) {
       if (state.favOnly && !p.star) return false;
-      if (filter === "run" && p.type !== "run") return false;
-      if (filter === "pass" && p.type !== "pass") return false;
-      if (filter === "defense" && p.type !== "defense") return false;
+      if (kind === "run" && playKind(p) !== "run") return false;
+      if (kind === "pass" && playKind(p) !== "pass") return false;
+      if (kind === "defense" && playKind(p) !== "defense") return false;
+      if (tag && tag !== "ALL") {
+        if (String(p.number || "").trim().toUpperCase() !== tag) return false;
+      }
       const hay = (p.number + " " + p.formation + " " + (p.defense || "") + " " + p.name + " " + (p.type || "")).toLowerCase();
       if (q && hay.indexOf(q) < 0) return false;
       return true;
     });
     return sortBookPlays(filtered);
+  }
+
+  function syncPlayFilters() {
+    const tag = String(state.playTag || "all").toLowerCase() === "all" ? "all" : String(state.playTag || "all").toUpperCase();
+    document.querySelectorAll("#tagFilter [data-tag]").forEach(function (btn) {
+      btn.classList.toggle("on", btn.getAttribute("data-tag") === tag);
+    });
+    const kind = state.playKindFilter === "pass" || state.playKindFilter === "defense" || state.playKindFilter === "run"
+      ? state.playKindFilter : "all";
+    document.querySelectorAll("#kindFilter [data-kind]").forEach(function (btn) {
+      btn.classList.toggle("on", btn.getAttribute("data-kind") === kind);
+    });
+  }
+
+  function setPlayTag(tag) {
+    const next = !tag || tag === "all" ? "all" : String(tag).toUpperCase();
+    state.playTag = state.playTag === next && next !== "all" ? "all" : next;
+    saveUi({ playTag: state.playTag });
+    syncPlayFilters();
+    renderList();
+  }
+
+  function setPlayKindFilter(kind) {
+    const next = kind === "run" || kind === "pass" || kind === "defense" ? kind : "all";
+    state.playKindFilter = state.playKindFilter === next && next !== "all" ? "all" : next;
+    saveUi({ playKindFilter: state.playKindFilter });
+    syncPlayFilters();
+    renderList();
   }
 
   function setPlaySort(mode) {
@@ -981,12 +970,13 @@
     const plays = visibleBookPlays();
     updatePlayCount();
     updatePresentBar();
+    syncPlayFilters();
     if (!plays.length) {
       const empty = document.createElement("div");
       empty.className = "set-empty";
       empty.textContent = state.favOnly
         ? "No favorite plays. Star a play, or tap Show all."
-        : "No plays match.";
+        : "No plays match these filters.";
       ul.appendChild(empty);
       return;
     }
@@ -1076,7 +1066,6 @@
     const storedDef = p.defense || "4-4 Base";
     $("defSelect").value = RaidersPlays.resolveDefName ? RaidersPlays.resolveDefName(storedDef) : storedDef;
     $("typeSelect").value = p.type === "defense" || p.type === "pass" ? p.type : "run";
-    syncQuickPlay();
     $("notes").value = p.notes || "";
     $("printNum").textContent = p.number;
     $("printNum").className = "num " + playKind(p);
@@ -2634,11 +2623,24 @@
     });
 
     $("playSearch").addEventListener("input", renderList);
-    $("playFilter").addEventListener("change", renderList);
     if ($("playSort")) {
       $("playSort").addEventListener("change", () => setPlaySort($("playSort").value));
     }
     if ($("btnFavOnly")) $("btnFavOnly").addEventListener("click", toggleFavOnly);
+    if ($("tagFilter")) {
+      $("tagFilter").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-tag]");
+        if (!btn) return;
+        setPlayTag(btn.getAttribute("data-tag"));
+      });
+    }
+    if ($("kindFilter")) {
+      $("kindFilter").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-kind]");
+        if (!btn) return;
+        setPlayKindFilter(btn.getAttribute("data-kind"));
+      });
+    }
     $("playList").addEventListener("pointerdown", () => setListFocus("book"));
     $("setList").addEventListener("pointerdown", () => setListFocus("set"));
     document.querySelector(".set-panel").addEventListener("pointerdown", () => setListFocus("set"));
@@ -2646,22 +2648,11 @@
     bindPlayField("nameInput", (v) => { play().name = v; });
     bindPlayField("notes", (v) => { play().notes = v; });
     $("typeSelect").addEventListener("change", () => {
-      setPlayKind($("typeSelect").value);
+      commitPlayFields();
+      pushUndo();
+      play().type = $("typeSelect").value;
+      render();
     });
-    if ($("letterBar")) {
-      $("letterBar").addEventListener("click", (e) => {
-        const btn = e.target.closest("[data-letter]");
-        if (!btn) return;
-        setPlayLetter(btn.getAttribute("data-letter"));
-      });
-    }
-    if ($("typeBar")) {
-      $("typeBar").addEventListener("click", (e) => {
-        const btn = e.target.closest("[data-type]");
-        if (!btn) return;
-        setPlayKind(btn.getAttribute("data-type"));
-      });
-    }
     $("formSelect").addEventListener("change", applyFormation);
     $("defSelect").addEventListener("change", applyDefense);
     if ($("btnApplyKids")) $("btnApplyKids").addEventListener("click", applyKidsToAllPlays);
@@ -2873,6 +2864,9 @@
     const ui = loadUi();
     state.favOnly = !!ui.favOnly;
     state.playSort = ui.playSort === "letter" || ui.playSort === "tweaked" || ui.playSort === "newest" || ui.playSort === "oldest" ? ui.playSort : "manual";
+    const tags = { A: 1, B: 1, Q: 1, Y: 1, Z: 1, X: 1, D: 1 };
+    state.playTag = tags[String(ui.playTag || "").toUpperCase()] ? String(ui.playTag).toUpperCase() : "all";
+    state.playKindFilter = ui.playKindFilter === "run" || ui.playKindFilter === "pass" || ui.playKindFilter === "defense" ? ui.playKindFilter : "all";
     if ($("playSort")) $("playSort").value = state.playSort;
     syncFavButton();
     applySideWidth(ui.sideW || SIDE_DEFAULT);
