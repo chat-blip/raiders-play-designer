@@ -269,6 +269,22 @@
       color: var(--navy);
       border: 2px solid var(--navy);
     }
+    .quick-bar { display: grid; gap: 6px; margin-bottom: 6px; }
+    .quick-bar.letters { grid-template-columns: repeat(4, 1fr); }
+    .quick-bar.types { grid-template-columns: 1fr 1fr 1fr; margin-bottom: 8px; }
+    .quick-bar button {
+      min-height: 40px;
+      border: 1px solid #c9d3df;
+      background: #fff;
+      border-radius: 6px;
+      font-weight: 800;
+      font-size: 15px;
+      touch-action: manipulation;
+    }
+    .quick-bar.types button { font-size: 12px; }
+    .quick-bar button.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+    .quick-bar button[data-type="run"].on { background: var(--run); border-color: var(--run); }
+    .quick-bar button[data-type="pass"].on { background: var(--pass); color: var(--navy); border-color: var(--pass); }
     .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
     .tool-grid button, .tools .full {
       border: 1px solid #c9d3df; background: #fff; border-radius: 6px; padding: 8px 6px; font-size: 12px; font-weight: 650;
@@ -727,9 +743,23 @@
       <div class="col-resizer" id="resizeTools" role="separator" aria-orientation="vertical" aria-label="Resize tools" title="Drag to resize the right panel. Double-click to reset."></div>
       <aside class="tools">
         <h2>Play</h2>
+        <div class="quick-bar letters" id="letterBar">
+          <button type="button" data-letter="A">A</button>
+          <button type="button" data-letter="B">B</button>
+          <button type="button" data-letter="Q">Q</button>
+          <button type="button" data-letter="Y">Y</button>
+          <button type="button" data-letter="Z">Z</button>
+          <button type="button" data-letter="X">X</button>
+          <button type="button" data-letter="D">D</button>
+        </div>
+        <div class="quick-bar types" id="typeBar">
+          <button type="button" data-type="run">Run</button>
+          <button type="button" data-type="pass">Pass</button>
+          <button type="button" data-type="defense">Defense</button>
+        </div>
         <div class="row">
-          <input id="numInput" style="width:70px" />
-          <select id="typeSelect" style="width:108px">
+          <input id="numInput" placeholder="01" title="Play tag. Use the buttons or type 01, 03, etc." />
+          <select id="typeSelect" hidden>
             <option value="run">Run</option>
             <option value="pass">Pass</option>
             <option value="defense">Defense</option>
@@ -814,10 +844,10 @@
   </div>
   <div id="toast"></div>
   <div id="offlineChip" hidden>Offline — saved on this device</div>
-  <script src="plays.js?v=cloud35"></script>
-  <script src="playbook-data.js?v=cloud35"></script>
-  <script src="cloud-config.js?v=cloud35"></script>
-  <script src="cloud.js?v=cloud35"></script>
-  <script src="app.js?v=cloud35"></script>
+  <script src="plays.js?v=cloud36"></script>
+  <script src="playbook-data.js?v=cloud36"></script>
+  <script src="cloud-config.js?v=cloud36"></script>
+  <script src="cloud.js?v=cloud36"></script>
+  <script src="app.js?v=cloud36"></script>
 </body>
 </html>

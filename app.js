@@ -142,7 +142,52 @@
       }
       if (meta) meta.innerHTML = "<b>" + escapeHtml(playListFormation(p)) + "</b> " + escapeHtml(p.name);
     });
+    syncQuickPlay();
+    syncQuickPlay();
     scheduleFitChrome();
+  }
+
+  function syncQuickPlay() {
+    const p = play();
+    if (!p) return;
+    const letter = String(p.number || "").trim().toUpperCase();
+    document.querySelectorAll("#letterBar [data-letter]").forEach(function (btn) {
+      btn.classList.toggle("on", btn.getAttribute("data-letter") === letter);
+    });
+    const kind = p.type === "defense" || p.type === "pass" ? p.type : "run";
+    document.querySelectorAll("#typeBar [data-type]").forEach(function (btn) {
+      btn.classList.toggle("on", btn.getAttribute("data-type") === kind);
+    });
+    if ($("typeSelect")) $("typeSelect").value = kind;
+  }
+
+  function setPlayLetter(letter) {
+    const p = play();
+    if (!p || !letter) return;
+    commitPlayFields();
+    if (String(p.number || "") === letter) {
+      syncQuickPlay();
+      return;
+    }
+    pushUndo();
+    p.number = letter;
+    if ($("numInput")) $("numInput").value = letter;
+    render();
+  }
+
+  function setPlayKind(type) {
+    const p = play();
+    if (!p) return;
+    const next = type === "defense" || type === "pass" ? type : "run";
+    commitPlayFields();
+    if (p.type === next) {
+      syncQuickPlay();
+      return;
+    }
+    pushUndo();
+    p.type = next;
+    if ($("typeSelect")) $("typeSelect").value = next;
+    render();
   }
 
   function bindPlayField(id, apply) {
@@ -1031,6 +1076,7 @@
     const storedDef = p.defense || "4-4 Base";
     $("defSelect").value = RaidersPlays.resolveDefName ? RaidersPlays.resolveDefName(storedDef) : storedDef;
     $("typeSelect").value = p.type === "defense" || p.type === "pass" ? p.type : "run";
+    syncQuickPlay();
     $("notes").value = p.notes || "";
     $("printNum").textContent = p.number;
     $("printNum").className = "num " + playKind(p);
@@ -2600,11 +2646,22 @@
     bindPlayField("nameInput", (v) => { play().name = v; });
     bindPlayField("notes", (v) => { play().notes = v; });
     $("typeSelect").addEventListener("change", () => {
-      commitPlayFields();
-      pushUndo();
-      play().type = $("typeSelect").value;
-      render();
+      setPlayKind($("typeSelect").value);
     });
+    if ($("letterBar")) {
+      $("letterBar").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-letter]");
+        if (!btn) return;
+        setPlayLetter(btn.getAttribute("data-letter"));
+      });
+    }
+    if ($("typeBar")) {
+      $("typeBar").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-type]");
+        if (!btn) return;
+        setPlayKind(btn.getAttribute("data-type"));
+      });
+    }
     $("formSelect").addEventListener("change", applyFormation);
     $("defSelect").addEventListener("change", applyDefense);
     if ($("btnApplyKids")) $("btnApplyKids").addEventListener("click", applyKidsToAllPlays);
