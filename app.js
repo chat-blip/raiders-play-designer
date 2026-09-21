@@ -476,7 +476,7 @@
     el.textContent = msg;
     el.classList.add("show");
     clearTimeout(el._t);
-    el._t = setTimeout(() => el.classList.remove("show"), 900);
+    el._t = setTimeout(() => el.classList.remove("show"), 2200);
   }
 
   function svgPoint(evt) {
@@ -2315,7 +2315,40 @@
 
   function studioBag() {
     if (!state.studio) return [];
-    return state.studio.side === "def" ? state.book.customDef : state.book.customOff;
+    return state.studio.side === "def" ? (state.book.customDef || []) : (state.book.customOff || []);
+  }
+
+  function studioRecord() {
+    if (!state.studio) return null;
+    const bag = studioBag();
+    if (state.studio.id) {
+      const byId = bag.find(function (f) { return f.id === state.studio.id; });
+      if (byId) return byId;
+    }
+    const name = ((($("studioName") && $("studioName").value) || state.studio.name || "")).trim();
+    if (!name) return null;
+    return bag.find(function (f) { return String(f.name).toLowerCase() === name.toLowerCase(); }) || null;
+  }
+
+  function hideStudioAsk() {
+    if (!state.studio) return;
+    state.studio.askId = null;
+    state.studio.askRec = null;
+    const ask = $("studioAsk");
+    if (ask) ask.hidden = true;
+  }
+
+  function askDeleteForm(f) {
+    if (!f) {
+      toast("Tap a saved name first");
+      return;
+    }
+    state.studio.askId = f.id || f.name;
+    state.studio.askRec = f;
+    const ask = $("studioAsk");
+    const text = $("studioAskText");
+    if (text) text.textContent = "Delete “" + f.name + "”? Old plays keep their drawings.";
+    if (ask) ask.hidden = false;
   }
 
   function studioBlankPlayers(side) {
@@ -2338,9 +2371,11 @@
   }
 
   function loadStudioForm(f) {
+    hideStudioAsk();
     state.studio.id = f.id;
     state.studio.name = f.name;
     state.studio.players = templatePlayers(f.players, state.studio.side);
+    if (state.studio.side === "off" && RaidersPlays.pinOLine) RaidersPlays.pinOLine(state.studio.players);
     state.studio.sel = null;
     if ($("studioName")) $("studioName").value = f.name;
     if ($("studioFrom")) $("studioFrom").value = "";
@@ -2348,22 +2383,22 @@
   }
 
   function setStudioSide(side) {
-    if (!state.studio || state.studio.side === side) {
+    if (!state.studio) return;
+    if (state.studio.side === side) {
       syncStudioChrome();
       return;
     }
+    hideStudioAsk();
     state.studio.side = side;
-    state.studio.id = null;
-    state.studio.name = "";
-    state.studio.players = studioBlankPlayers(side);
-    state.studio.sel = null;
-    if ($("studioName")) $("studioName").value = "";
     fillStudioFrom();
-    renderStudio();
+    const bag = studioBag();
+    if (bag.length) loadStudioForm(bag[0]);
+    else studioStartBlank();
   }
 
   function studioStartBlank() {
     if (!state.studio) return;
+    hideStudioAsk();
     state.studio.id = null;
     state.studio.name = "";
     state.studio.players = studioBlankPlayers(state.studio.side);
@@ -2375,6 +2410,7 @@
 
   function studioCopyPlay() {
     if (!state.studio) return;
+    hideStudioAsk();
     const cur = play();
     const side = state.studio.side === "def" ? "def" : "off";
     const spots = (cur.players || []).filter(function (pl) { return pl.side === side; });
@@ -2394,6 +2430,7 @@
 
   function studioStartFrom() {
     if (!state.studio) return;
+    hideStudioAsk();
     const name = $("studioFrom").value;
     if (!name) return;
     if (state.studio.side === "def") {
@@ -2423,6 +2460,7 @@
 
   function saveStudio() {
     if (!state.studio) return;
+    hideStudioAsk();
     const name = (($("studioName") && $("studioName").value) || "").trim();
     if (!name) {
       toast("Name this formation");
@@ -2437,15 +2475,16 @@
     let players = templatePlayers(state.studio.players, side);
     if (side === "off" && RaidersPlays.pinOLine) RaidersPlays.pinOLine(players);
     const bag = studioBag();
-    let rec = state.studio.id ? bag.find(function (f) { return f.id === state.studio.id; }) : null;
+    let rec = studioRecord();
     const nameHit = bag.find(function (f) { return String(f.name).toLowerCase() === name.toLowerCase(); });
-    if (!rec && nameHit) rec = nameHit;
     if (rec && nameHit && nameHit.id !== rec.id) {
       toast("That name is already used");
       return false;
     }
+    if (!rec && nameHit) rec = nameHit;
     const te = teFromPlayers(players);
     const oldName = rec ? rec.name : null;
+    const wasNew = !rec;
     if (!rec) {
       rec = { id: RaidersPlays.uid(side === "def" ? "def" : "off"), name: name, players: players, te: te, side: side };
       bag.push(rec);
@@ -2465,7 +2504,7 @@
     state.fillingForms = false;
     scheduleSave();
     renderStudio();
-    toast("Saved. New plays can use " + name);
+    toast(wasNew ? "Saved. New plays can use " + name : "Updated " + name + " for new plays");
     return true;
   }
 
@@ -2510,36 +2549,73 @@
     toast("Also saved " + flipName);
   }
 
-  function deleteStudio() {
-    if (!state.studio || !state.studio.id) {
-      toast("Pick a saved formation");
-      return;
-    }
-    if (!window.confirm("Delete this formation? Plays you already drew keep their spots.")) return;
-    const id = state.studio.id;
+  function deleteStudioRec(rec) {
+    if (!rec) return;
+    const id = rec.id;
+    const name = rec.name;
     if (state.studio.side === "def") {
-      state.book.customDef = (state.book.customDef || []).filter(function (f) { return f.id !== id; });
+      state.book.customDef = (state.book.customDef || []).filter(function (f) {
+        if (id && f.id === id) return false;
+        if (name && f.name === name) return false;
+        return true;
+      });
     } else {
-      state.book.customOff = (state.book.customOff || []).filter(function (f) { return f.id !== id; });
+      state.book.customOff = (state.book.customOff || []).filter(function (f) {
+        if (id && f.id === id) return false;
+        if (name && f.name === name) return false;
+        return true;
+      });
     }
+    hideStudioAsk();
     state.fillingForms = true;
     fillFormations();
     render();
     state.fillingForms = false;
     scheduleSave();
-    studioStartBlank();
-    toast("Formation deleted");
+    const bag = studioBag();
+    if (bag.length) loadStudioForm(bag[0]);
+    else studioStartBlank();
+    toast("Deleted " + name);
+  }
+
+  function deleteStudio() {
+    askDeleteForm(studioRecord());
+  }
+
+  function confirmStudioDelete() {
+    if (!state.studio) return;
+    const rec = state.studio.askRec || studioRecord();
+    hideStudioAsk();
+    if (!rec) {
+      toast("Tap a saved name first");
+      return;
+    }
+    deleteStudioRec(rec);
   }
 
   function syncStudioChrome() {
     if (!state.studio) return;
+    const offN = (state.book.customOff || []).length;
+    const defN = (state.book.customDef || []).length;
     document.querySelectorAll("[data-studio-side]").forEach(function (btn) {
-      btn.classList.toggle("on", btn.getAttribute("data-studio-side") === state.studio.side);
+      const side = btn.getAttribute("data-studio-side");
+      btn.classList.toggle("on", side === state.studio.side);
+      if (side === "off") btn.textContent = offN ? "Offense (" + offN + ")" : "Offense";
+      if (side === "def") btn.textContent = defN ? "Defense (" + defN + ")" : "Defense";
     });
     if ($("studioSaveFlip")) $("studioSaveFlip").hidden = state.studio.side === "def";
     if ($("studioSideLabel")) {
       $("studioSideLabel").textContent = state.studio.side === "def" ? "Defense" : "Offense";
     }
+    const rec = studioRecord();
+    if ($("studioSave")) $("studioSave").textContent = rec ? "Save changes" : "Save new";
+    if ($("studioHint")) {
+      $("studioHint").textContent = rec
+        ? "Editing “" + rec.name + "”. Drag the spots, then Save changes. New plays pick this up. Old plays stay as drawn."
+        : "Blank slate. Drag the spots, name it, Save new. Tap a saved name to edit one.";
+    }
+    const hint = $("studioListHint");
+    if (hint) hint.hidden = !studioBag().length;
   }
 
   function renderStudioList() {
@@ -2550,19 +2626,35 @@
     if (!bag.length) {
       const p = document.createElement("p");
       p.className = "studio-empty";
-      p.textContent = "None yet. Move the players, name it, Save.";
+      p.textContent = "None yet on " + (state.studio.side === "def" ? "defense" : "offense") + ". Move the players, name it, Save new.";
       box.appendChild(p);
       return;
     }
+    const selected = studioRecord();
     bag.slice().sort(function (a, b) {
       return String(a.name).localeCompare(String(b.name));
     }).forEach(function (f) {
+      const row = document.createElement("div");
+      row.className = "studio-item-row";
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "studio-item" + (state.studio.id === f.id ? " active" : "");
+      btn.className = "studio-item" + (selected && selected.id === f.id ? " active" : "");
       btn.textContent = f.name;
       btn.addEventListener("click", function () { loadStudioForm(f); });
-      box.appendChild(btn);
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "studio-item-del";
+      del.textContent = "X";
+      del.title = "Delete " + f.name;
+      del.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        loadStudioForm(f);
+        askDeleteForm(f);
+      });
+      row.appendChild(btn);
+      row.appendChild(del);
+      box.appendChild(row);
     });
   }
 
@@ -2570,7 +2662,7 @@
     const svg = $("studioField");
     if (!svg || !state.studio) return;
     syncStudioChrome();
-    renderStudioList();
+    if (!state.studio.drag) renderStudioList();
     svg.innerHTML = "";
     const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     bg.setAttribute("width", "1200");
@@ -2669,18 +2761,30 @@
 
   function openStudio() {
     ensureSets();
-    const side = isDefensePlay(play()) ? "def" : "off";
+    const p = play();
+    const offName = ($("formSelect") && $("formSelect").value) || (p && p.formation) || "";
+    const defName = ($("defSelect") && $("defSelect").value) || (p && p.defense) || "";
+    const off = customOffByName(offName);
+    const def = customDefByName(defName);
+    const preferDef = isDefensePlay(p);
+    const side = preferDef && (def || !off) ? "def" : (off || !preferDef ? "off" : "def");
+    const current = side === "def" ? def : off;
+    const bag = side === "def" ? (state.book.customDef || []) : (state.book.customOff || []);
+    const start = current || bag[0] || null;
     state.studio = {
       side: side,
-      id: null,
-      name: "",
-      players: studioBlankPlayers(side),
+      id: start ? start.id : null,
+      name: start ? start.name : "",
+      players: start ? templatePlayers(start.players, side) : studioBlankPlayers(side),
       drag: null,
       sel: null,
+      askId: null,
+      askRec: null,
     };
+    if (side === "off" && RaidersPlays.pinOLine) RaidersPlays.pinOLine(state.studio.players);
     const el = $("formStudio");
     if (el) el.hidden = false;
-    if ($("studioName")) $("studioName").value = "";
+    if ($("studioName")) $("studioName").value = start ? start.name : "";
     fillStudioFrom();
     renderStudio();
   }
@@ -2706,6 +2810,8 @@
     if ($("studioSave")) $("studioSave").addEventListener("click", saveStudio);
     if ($("studioSaveFlip")) $("studioSaveFlip").addEventListener("click", saveStudioFlip);
     if ($("studioDelete")) $("studioDelete").addEventListener("click", deleteStudio);
+    if ($("studioAskYes")) $("studioAskYes").addEventListener("click", confirmStudioDelete);
+    if ($("studioAskNo")) $("studioAskNo").addEventListener("click", hideStudioAsk);
     document.querySelectorAll("[data-studio-side]").forEach(function (btn) {
       btn.addEventListener("click", function () {
         setStudioSide(btn.getAttribute("data-studio-side"));

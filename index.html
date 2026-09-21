@@ -599,7 +599,18 @@
       padding: 7px 8px;
       font-weight: 700;
     }
+    .studio-item-row { display: flex; gap: 4px; align-items: stretch; }
+    .studio-item { flex: 1; }
     .studio-item.active { border-color: var(--navy); background: #e8eef6; }
+    .studio-item-del {
+      flex: none; width: 42px; border: 1px solid #c9d3df; background: #fff;
+      border-radius: 4px; color: var(--red); font-weight: 800; padding: 0;
+    }
+    .studio-ask {
+      margin: 0 0 10px; padding: 8px; border: 1px solid var(--gold);
+      background: #fff8e6; border-radius: 4px;
+    }
+    .studio-ask p { margin: 0 0 8px; font-size: 13px; font-weight: 700; }
     .studio-empty { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
     #formStudio .studio-stage { background: #fff; min-height: 0; min-width: 0; }
     svg#studioField {
@@ -615,7 +626,7 @@
       #formStudio .studio-side { border-right: 0; border-bottom: 1px solid #d5dde7; max-height: 38vh; }
     }
     #toast {
-      position: fixed; bottom: 16px; right: 16px; background: var(--navy); color: #fff;
+      position: fixed; bottom: 16px; right: 16px; z-index: 90; background: var(--navy); color: #fff;
       padding: 8px 12px; border-radius: 6px; opacity: 0; pointer-events: none; transition: opacity .15s;
     }
     #toast.show { opacity: 1; }
@@ -946,7 +957,7 @@
     <div class="studio-panel">
       <div class="studio-head">
         <h1>My formations</h1>
-        <p>Blank slate, drag the spots, name it, Save. New plays can use it. Plays you already drew keep their drawings.</p>
+        <p id="studioHint">Tap a saved name to edit it. Drag the spots, then Save changes. New plays pick it up.</p>
         <button type="button" id="studioDone">Done</button>
       </div>
       <div class="studio-body">
@@ -960,12 +971,18 @@
           <button type="button" class="full" id="studioCopyPlay">Copy this play</button>
           <select id="studioFrom" style="margin-bottom:10px"></select>
           <h2>Saved</h2>
+          <p class="studio-empty" id="studioListHint" style="margin-top:0">Tap a name to edit. X deletes it.</p>
           <div id="studioList"></div>
+          <div id="studioAsk" class="studio-ask" hidden>
+            <p id="studioAskText">Delete this formation?</p>
+            <button type="button" class="full danger" id="studioAskYes">Delete it</button>
+            <button type="button" class="full" id="studioAskNo">Keep it</button>
+          </div>
           <div class="field-label">Name</div>
           <input id="studioName" maxlength="40" placeholder="Split I Left" style="width:100%;margin-bottom:8px;border:1px solid #c9d3df;border-radius:4px;padding:7px 8px" />
-          <button type="button" class="full navy" id="studioSave">Save</button>
+          <button type="button" class="full navy" id="studioSave">Save changes</button>
           <button type="button" class="full" id="studioSaveFlip">Save other side</button>
-          <button type="button" class="full danger" id="studioDelete">Delete</button>
+          <button type="button" class="full danger" id="studioDelete">Delete this one</button>
         </aside>
         <div class="studio-stage">
           <svg id="studioField" viewBox="0 0 1200 720" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -1005,10 +1022,10 @@
   </div>
   <div id="toast"></div>
   <div id="offlineChip" hidden>Offline — saved on this device</div>
-  <script src="plays.js?v=cloud42"></script>
-  <script src="playbook-data.js?v=cloud42"></script>
-  <script src="cloud-config.js?v=cloud42"></script>
-  <script src="cloud.js?v=cloud42"></script>
-  <script src="app.js?v=cloud42"></script>
+  <script src="plays.js?v=cloud44"></script>
+  <script src="playbook-data.js?v=cloud44"></script>
+  <script src="cloud-config.js?v=cloud44"></script>
+  <script src="cloud.js?v=cloud44"></script>
+  <script src="app.js?v=cloud44"></script>
 </body>
 </html>
