@@ -43,8 +43,8 @@
 
   function otherShell() {
     var p = location.pathname || "";
-    if (/path\.html$/i.test(p)) return "spots.html";
-    return "path.html";
+    if (/line\.html$/i.test(p)) return "path.html";
+    return "line.html";
   }
 
   function isOffline() {
