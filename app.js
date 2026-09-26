@@ -501,12 +501,55 @@
   }
 
   function motionTip(playObj, playerId) {
-    const motions = (playObj.assignments || []).filter(function (a) {
-      return a.from === playerId && a.type === "motion" && a.points && a.points.length;
+    return assignTip(playObj, playerId, "motion");
+  }
+
+  function assignTip(playObj, playerId, type) {
+    const bag = (playObj.assignments || []).filter(function (a) {
+      return a.from === playerId && a.type === type && a.points && a.points.length;
     });
-    if (!motions.length) return null;
-    const m = motions[motions.length - 1];
-    return m.points[m.points.length - 1];
+    if (!bag.length) return null;
+    const last = bag[bag.length - 1];
+    const pt = last.points[last.points.length - 1];
+    return { x: pt.x, y: pt.y };
+  }
+
+  function lastAssignTip(playObj, playerId, types) {
+    const bag = (playObj.assignments || []).filter(function (a) {
+      return a.from === playerId && types.indexOf(a.type) >= 0 && a.points && a.points.length;
+    });
+    if (!bag.length) return null;
+    const last = bag[bag.length - 1];
+    const pt = last.points[last.points.length - 1];
+    return { x: pt.x, y: pt.y, type: last.type, id: last.id };
+  }
+
+  function followTipKind(a) {
+    if (!a) return null;
+    if (a.afterType === "route" || a.afterType === "motion") return a.afterType;
+    if (a.afterMotion) return "motion";
+    return null;
+  }
+
+  function startTipForDraw(playObj, playerId, type) {
+    if (type === "motion") return null;
+    if (type === "ball") return lastAssignTip(playObj, playerId, ["route", "motion"]);
+    return lastAssignTip(playObj, playerId, ["motion"]);
+  }
+
+  function routeForBallStart(playObj) {
+    if (state.selected && state.selected.kind === "assign") {
+      const a = (playObj.assignments || []).find(function (x) { return x.id === state.selected.id; });
+      if (a && a.type === "route" && a.from) return a;
+    }
+    if (state.selected && state.selected.kind === "player") {
+      return lastAssignTip(playObj, state.selected.id, ["route"])
+        ? (playObj.assignments || []).filter(function (x) {
+          return x.from === state.selected.id && x.type === "route";
+        }).pop()
+        : null;
+    }
+    return null;
   }
 
   function livePoints(a, playObj) {
@@ -514,8 +557,9 @@
     const pts = a.points.map(function (pt) {
       return { x: pt.x, y: pt.y };
     });
-    if (a.afterMotion) {
-      const tip = motionTip(playObj, a.from);
+    const kind = followTipKind(a);
+    if (kind) {
+      const tip = assignTip(playObj, a.from, kind);
       if (tip) pts[0] = { x: tip.x, y: tip.y };
     }
     return pts;
@@ -1402,7 +1446,7 @@
       route: "Click a player, then click bend spots on the field. Tap Enter to finish the arrow. Keep Curve on for a smooth arc.",
       block: "Tap the player to start. After motion, the T-bar starts at the dashed end — then tap where he blocks. Do not drag back to the player.",
       motion: "Tap a player, then tap where he motions to. Tap Enter to finish. Then switch to Block and tap the player — the block starts at the dashed end.",
-      ball: "Click the ball carrier, then tap the path. When the arrow looks right, tap Enter to lock it in.",
+      ball: "After a route, tap the player (or the field) — the ball starts at the route arrow, not the circle. Then tap the path and Enter.",
       paintRed: "Click a player to mark the ball carrier (red).",
       paintGold: "Click receivers to mark them gold. Click again to clear. You can mark more than one.",
       addOff: "Click the field to add an offensive player.",
@@ -1562,7 +1606,7 @@
           g.appendChild(h);
         }
         pts.forEach((pt, i) => {
-          if (a.afterMotion && i === 0) return;
+          if (followTipKind(a) && i === 0) return;
           const h = document.createElementNS("http://www.w3.org/2000/svg", "circle");
           h.setAttribute("cx", pt.x);
           h.setAttribute("cy", pt.y);
@@ -1796,20 +1840,22 @@
 
   function beginDraw(pl, type, pt, fromCircle, pointerType) {
     let start = { x: pl.x, y: pl.y };
-    let afterMotion = false;
+    let afterType = null;
     if (!fromCircle && type !== "motion") {
-      const tip = motionTip(play(), pl.id);
+      const tip = startTipForDraw(play(), pl.id, type);
       if (tip) {
         start = { x: tip.x, y: tip.y };
-        afterMotion = true;
+        afterType = tip.type;
       }
     }
-    const touch = pointerType === "touch" || afterMotion;
+    const fromTip = !!afterType;
+    const touch = pointerType === "touch" || fromTip;
     state.drawHold = touch;
     state.drawing = {
       from: pl.id,
       type: type,
-      afterMotion: afterMotion,
+      afterMotion: afterType === "motion",
+      afterType: afterType,
       points: [start, { x: start.x, y: start.y }],
     };
     state.selected = { kind: "player", id: pl.id };
@@ -1834,7 +1880,8 @@
         type: state.drawing.type,
         points: state.drawing.points,
         smooth: state.curve,
-        afterMotion: !!state.drawing.afterMotion,
+        afterMotion: state.drawing.afterType === "motion" || !!state.drawing.afterMotion,
+        afterType: state.drawing.afterType || null,
       };
       play().assignments.push(a);
       state.selected = { kind: "assign", id: a.id };
@@ -1884,6 +1931,19 @@
         beginDraw(plEarly, state.tool, pt, evt.altKey, evt.pointerType);
         return;
       }
+      if (state.tool === "ball" && !evt.altKey) {
+        const fromRoute = routeForBallStart(p);
+        const plFromRoute = fromRoute ? currentPlayer(fromRoute.from) : null;
+        if (plFromRoute) {
+          beginDraw(plFromRoute, "ball", pt, false, evt.pointerType);
+          if (state.drawing && state.drawing.points.length >= 2) {
+            state.drawing.points[state.drawing.points.length - 1] = { x: pt.x, y: pt.y };
+            state.drawHold = false;
+          }
+          renderField();
+          return;
+        }
+      }
     }
 
     if (state.selected && state.selected.kind === "assign") {
@@ -1891,7 +1951,7 @@
       if (a) {
         const pts = livePoints(a, p);
         for (let i = 0; i < pts.length; i++) {
-          if (a.afterMotion && i === 0) continue;
+          if (followTipKind(a) && i === 0) continue;
           if (dist(pt, pts[i]) <= 10) {
             pushUndo();
             state.drag = { kind: "handle", assignId: a.id, index: i };
@@ -1992,15 +2052,16 @@
     } else if (state.drag.kind === "handle") {
       const a = p.assignments.find((x) => x.id === state.drag.assignId);
       if (!a) return;
-      if (a.afterMotion && state.drag.index === 0) {
+      if (followTipKind(a) && state.drag.index === 0) {
+        const kind = followTipKind(a);
         const tipAssign = (p.assignments || []).filter(function (x) {
-          return x.from === a.from && x.type === "motion";
+          return x.from === a.from && x.type === kind;
         }).pop();
         if (tipAssign) tipAssign.points[tipAssign.points.length - 1] = { x: pt.x, y: pt.y };
       } else {
         a.points[state.drag.index] = { x: pt.x, y: pt.y };
         const owner = currentPlayer(a.from);
-        if (owner && state.drag.index === 0 && !a.afterMotion) {
+        if (owner && state.drag.index === 0 && !followTipKind(a)) {
           const dx = pt.x - owner.x;
           const dy = pt.y - owner.y;
           owner.x = pt.x;
