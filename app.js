@@ -711,7 +711,7 @@
 
   function syncAnimButtons() {
     const label = animButtonLabel();
-    ["btnPlay", "btnPresentPlay"].forEach(function (id) {
+    ["btnPlay", "btnPresentPlay", "btnEditorPlay"].forEach(function (id) {
       const el = $(id);
       if (el) el.textContent = label;
     });
@@ -3613,6 +3613,7 @@
     document.body.classList.add("present");
     clearSketch();
     if ($("btnPresent")) $("btnPresent").textContent = "Exit full screen";
+    if ($("btnEditorPresent")) $("btnEditorPresent").textContent = "Exit";
     render();
     const root = document.documentElement;
     if (root.requestFullscreen) root.requestFullscreen().catch(function () {});
@@ -3626,6 +3627,7 @@
     clearSketch();
     document.body.classList.remove("present");
     if ($("btnPresent")) $("btnPresent").textContent = "Full screen";
+    if ($("btnEditorPresent")) $("btnEditorPresent").textContent = "Full screen";
     scheduleFitChrome();
     if (!fromFs && document.fullscreenElement) {
       document.exitFullscreen().catch(function () {});
@@ -3793,6 +3795,8 @@
     $("btnRedo").addEventListener("click", redo);
     if ($("btnPlay")) $("btnPlay").addEventListener("click", toggleAnim);
     if ($("btnPresentPlay")) $("btnPresentPlay").addEventListener("click", toggleAnim);
+    if ($("btnEditorPlay")) $("btnEditorPlay").addEventListener("click", toggleAnim);
+    if ($("btnEditorPresent")) $("btnEditorPresent").addEventListener("click", togglePresent);
     if ($("btnPresent")) $("btnPresent").addEventListener("click", togglePresent);
     if ($("btnPresentExit")) $("btnPresentExit").addEventListener("click", () => exitPresent());
     if ($("btnPresentPrev")) $("btnPresentPrev").addEventListener("click", () => stepPlays(-1));

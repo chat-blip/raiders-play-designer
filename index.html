@@ -103,11 +103,21 @@
     .fav-filter.on { background: var(--navy); color: #fff; border-color: var(--navy); }
     #playSort { font-size: 12px; font-weight: 700; }
     #playList.sorted .play-item { cursor: pointer; }
-    .field-label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+    .field-label { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 2px; }
     .row { display: flex; gap: 6px; margin-bottom: 6px; }
     .row input, .row select, .tools select, .tools input, .tools textarea {
       width: 100%; border: 1px solid #c9d3df; border-radius: 4px; padding: 5px 7px; background: #fff;
     }
+    .play-meta { flex: none; }
+    .play-meta .row { margin-bottom: 4px; gap: 4px; }
+    .play-meta #numInput { width: 48px; flex: none; }
+    .play-meta #typeSelect { flex: 1; width: auto; min-width: 0; }
+    .play-meta #nameInput { margin: 0 0 4px; padding: 4px 6px; font-size: 12px; }
+    .play-meta .form-row { margin-bottom: 4px; }
+    .play-meta .form-row > div { flex: 1; min-width: 0; }
+    .play-meta select { margin: 0; padding: 4px 5px; font-size: 12px; }
+    .play-meta #btnStudio { width: 100%; margin: 0 0 8px; padding: 5px 6px; font-size: 11px; font-weight: 800; background: #0b1f3a; color: #fff; border-color: #0b1f3a; }
+    .tools h2 { margin: 0 0 3px; }
     .play-list { display: flex; flex-direction: column; gap: 2px; }
     .play-item {
       display: flex; gap: 5px; align-items: center; text-align: left;
@@ -291,9 +301,9 @@
     .quick-bar button.on { background: var(--navy); color: #fff; border-color: var(--navy); }
     .quick-bar button[data-kind="run"].on { background: var(--run); border-color: var(--run); }
     .quick-bar button[data-kind="pass"].on { background: var(--pass); color: var(--navy); border-color: var(--pass); }
-    .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+    .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 8px; }
     .tool-grid button, .tools .full {
-      border: 1px solid #c9d3df; background: #fff; border-radius: 6px; padding: 8px 6px; font-size: 12px; font-weight: 650;
+      border: 1px solid #c9d3df; background: #fff; border-radius: 6px; padding: 6px 5px; font-size: 11px; font-weight: 650;
       touch-action: manipulation;
     }
     .tool-grid button.on { background: var(--navy); color: #fff; border-color: var(--navy); }
@@ -308,8 +318,10 @@
       border-color: var(--gold);
     }
     .player-ghost { fill: none; stroke: #7a8aa0; stroke-width: 1.6; opacity: 0.4; }
-    .check { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 8px 0 12px; }
-    .tools textarea { min-height: 90px; resize: vertical; }
+    .check { display: flex; align-items: center; gap: 8px; font-size: 12px; margin: 4px 0 6px; }
+    .tools textarea { min-height: 64px; resize: vertical; }
+    #kidsHint { margin-bottom: 4px !important; font-size: 10px !important; }
+    #btnApplyKids { width: 100%; margin: 0 0 6px; padding: 5px 6px; font-size: 11px; }
     .keys { font-size: 11px; color: var(--muted); line-height: 1.45; margin-top: 10px; }
     .keys b { color: var(--text); }
     .editor-flip {
@@ -318,7 +330,8 @@
       bottom: max(10px, env(safe-area-inset-bottom, 0px));
       z-index: 40;
       display: flex;
-      align-items: center;
+      flex-direction: column;
+      align-items: stretch;
       gap: 6px;
       width: calc(var(--tool-w, 220px) - 16px);
       max-width: calc(100vw - 16px);
@@ -329,16 +342,25 @@
       border-radius: 8px;
       box-shadow: 0 10px 28px rgba(11, 31, 58, 0.4);
     }
+    .editor-flip-tools, .editor-flip-nav {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
     .editor-flip button {
       flex: 1;
-      min-height: 48px;
+      min-height: 40px;
       background: #fff;
       color: var(--navy);
       border: 0;
       border-radius: 6px;
       font-weight: 800;
-      font-size: 15px;
+      font-size: 14px;
       touch-action: manipulation;
+    }
+    .editor-flip #btnEditorPlay {
+      background: var(--gold);
+      color: var(--navy);
     }
     .editor-flip .pos {
       flex: none;
@@ -350,7 +372,7 @@
       white-space: nowrap;
     }
     body.present .editor-flip, body.locked .editor-flip { display: none; }
-    .tools { padding-bottom: 76px; }
+    .tools { padding-bottom: 124px; }
     .present-dock {
       display: none;
       position: fixed;
@@ -667,13 +689,13 @@
     .defense-play .player.def text { font-size: 11px; }
     .defense-play .player.def text.who { font-size: 10px; }
     .roster {
-      display: grid; grid-template-columns: 34px 1fr 34px 1fr; gap: 4px 6px;
-      align-items: center; margin: 0 0 10px;
+      display: grid; grid-template-columns: 28px 1fr 28px 1fr; gap: 2px 4px;
+      align-items: center; margin: 0 0 6px;
     }
-    .roster label { font-size: 11px; font-weight: 800; color: var(--text); }
+    .roster label { font-size: 10px; font-weight: 800; color: var(--text); }
     .roster input {
       width: 100%; border: 1px solid #c9d3df; border-radius: 4px;
-      padding: 3px 5px; font-size: 12px; text-transform: uppercase; background: #fff;
+      padding: 2px 4px; font-size: 11px; text-transform: uppercase; background: #fff;
     }
     .who-row { margin: -4px 0 10px; }
     .who-row .field-label { margin-bottom: 3px; }
@@ -901,23 +923,29 @@
       </main>
       <div class="col-resizer" id="resizeTools" role="separator" aria-orientation="vertical" aria-label="Resize tools" title="Drag to resize the right panel. Double-click to reset."></div>
       <aside class="tools">
-        <h2>Play</h2>
-        <div class="row">
-          <input id="numInput" style="width:70px" />
-          <select id="typeSelect" style="width:108px">
-            <option value="run">Run</option>
-            <option value="pass">Pass</option>
-            <option value="defense">Defense</option>
-          </select>
+        <div class="play-meta">
+          <h2>Play</h2>
+          <div class="row">
+            <input id="numInput" />
+            <select id="typeSelect">
+              <option value="run">Run</option>
+              <option value="pass">Pass</option>
+              <option value="defense">Defense</option>
+            </select>
+          </div>
+          <input id="nameInput" />
+          <div class="row form-row">
+            <div id="offFormWrap">
+              <div class="field-label">Offense</div>
+              <select id="formSelect"></select>
+            </div>
+            <div>
+              <div class="field-label" id="defFormLabel">Defense</div>
+              <select id="defSelect"></select>
+            </div>
+          </div>
+          <button type="button" class="full" id="btnStudio" title="Edit I Right or any formation and save it for new plays">My formations</button>
         </div>
-        <input id="nameInput" style="margin-bottom:8px;width:100%;border:1px solid #c9d3df;border-radius:4px;padding:6px 8px" />
-        <div id="offFormWrap">
-          <div class="field-label">Offense</div>
-          <select id="formSelect" style="margin-bottom:8px"></select>
-        </div>
-        <div class="field-label" id="defFormLabel">Defense</div>
-        <select id="defSelect" style="margin-bottom:8px"></select>
-        <button type="button" class="full" id="btnStudio" style="width:100%;margin:0 0 12px;background:#0b1f3a;color:#fff;border-color:#0b1f3a;font-weight:800" title="Edit I Right or any formation and save it for new plays">My formations</button>
         <h2>Kids</h2>
         <p class="field-label" id="kidsHint" style="text-transform:none;letter-spacing:0;font-size:11px;margin-bottom:6px">Names on this play only. Apply copies them to every play.</p>
         <div class="roster" id="rosterGrid"></div>
@@ -1025,16 +1053,22 @@
     <button type="button" id="btnPresentExit" class="present-exit">Exit</button>
   </div>
   <div class="editor-flip" id="editorFlip">
-    <button type="button" id="btnEditorPrev">Prev</button>
-    <span class="pos" id="editorPos">1 / 1</span>
-    <button type="button" id="btnEditorNext">Next</button>
+    <div class="editor-flip-tools">
+      <button type="button" id="btnEditorPlay" title="Watch the players move. Motion goes first, then the other lines.">Play</button>
+      <button type="button" id="btnEditorPresent" title="Kids view: the play fills the screen. Arrow keys flip plays. Esc exits.">Full screen</button>
+    </div>
+    <div class="editor-flip-nav">
+      <button type="button" id="btnEditorPrev">Prev</button>
+      <span class="pos" id="editorPos">1 / 1</span>
+      <button type="button" id="btnEditorNext">Next</button>
+    </div>
   </div>
   <div id="toast"></div>
   <div id="offlineChip" hidden>Offline — saved on this device</div>
-  <script src="plays.js?v=cloud48"></script>
-  <script src="playbook-data.js?v=cloud48"></script>
-  <script src="cloud-config.js?v=cloud48"></script>
-  <script src="cloud.js?v=cloud48"></script>
-  <script src="app.js?v=cloud48"></script>
+  <script src="plays.js?v=cloud49"></script>
+  <script src="playbook-data.js?v=cloud49"></script>
+  <script src="cloud-config.js?v=cloud49"></script>
+  <script src="cloud.js?v=cloud49"></script>
+  <script src="app.js?v=cloud49"></script>
 </body>
 </html>
