@@ -61,6 +61,7 @@ jobs:
           pathlib.Path("site/fit.html").write_text(text, encoding="utf-8")
           pathlib.Path("site/pace.html").write_text(text, encoding="utf-8")
           pathlib.Path("site/thru.html").write_text(text, encoding="utf-8")
+          pathlib.Path("site/slow.html").write_text(text, encoding="utf-8")
           pathlib.Path("site/version.json").write_text(
               json.dumps({"build": "run" + stamp}) + "\n",
               encoding="utf-8",

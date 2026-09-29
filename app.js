@@ -631,10 +631,10 @@
   }
 
   function trackSpeed(type) {
-    if (type === "block") return 120;
-    if (type === "motion") return 150;
-    if (type === "ball") return 185;
-    return 170;
+    if (type === "block") return 85;
+    if (type === "motion") return 105;
+    if (type === "ball") return 130;
+    return 120;
   }
 
   function tracksLen(tracks) {
