@@ -43,8 +43,8 @@
 
   function otherShell() {
     var p = location.pathname || "";
-    if (/slow\.html$/i.test(p)) return "thru.html";
-    return "slow.html";
+    if (/reset\.html$/i.test(p)) return "slow.html";
+    return "reset.html";
   }
 
   function isOffline() {

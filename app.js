@@ -720,7 +720,7 @@
   function animButtonLabel() {
     if (!state.anim) return "Play";
     if (state.anim.playing) return "Pause";
-    if (state.anim.phase === "done") return "Replay";
+    if (state.anim.phase === "done") return "Reset";
     return "Play";
   }
 
@@ -824,7 +824,12 @@
       stopAnim(false);
       return;
     }
-    if (state.anim && state.anim.phase !== "done") {
+    if (state.anim && state.anim.phase === "done") {
+      stopAnim(true);
+      renderField();
+      return;
+    }
+    if (state.anim && !state.anim.playing) {
       state.anim.playing = true;
       state.anim.t0 = performance.now() - (state.anim.elapsed || 0);
       syncAnimButtons();
