@@ -45,6 +45,7 @@
     fieldEdit: null,
     studio: null,
     fillingForms: false,
+    anim: null,
   };
 
   const $ = (id) => document.getElementById(id);
@@ -180,6 +181,7 @@
   }
 
   function undo() {
+    stopAnim(true);
     if (!state.undo.length) return;
     state.redo.push(clone(play()));
     const prev = state.undo.pop();
@@ -193,6 +195,7 @@
   }
 
   function redo() {
+    stopAnim(true);
     if (!state.redo.length) return;
     state.undo.push(clone(play()));
     const next = state.redo.pop();
@@ -595,6 +598,221 @@
 
   function midPoint(a, b) {
     return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  }
+
+  function measurePathEl() {
+    let svg = $("animMeasure");
+    if (!svg) {
+      svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.id = "animMeasure";
+      svg.setAttribute("width", "0");
+      svg.setAttribute("height", "0");
+      svg.setAttribute("aria-hidden", "true");
+      svg.style.cssText = "position:absolute;left:-12px;top:-12px;opacity:0;pointer-events:none";
+      document.body.appendChild(svg);
+    }
+    return svg;
+  }
+
+  function clearAnimMeasure() {
+    const svg = $("animMeasure");
+    if (svg) svg.innerHTML = "";
+  }
+
+  function makeTrack(a, playObj) {
+    const pts = livePoints(a, playObj);
+    if (!pts || pts.length < 2) return null;
+    const el = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    el.setAttribute("d", pathD(pts, useSmooth(a)));
+    measurePathEl().appendChild(el);
+    const len = el.getTotalLength();
+    if (!(len > 2)) return null;
+    return { el: el, len: len };
+  }
+
+  function tracksLen(tracks) {
+    return (tracks || []).reduce(function (sum, tr) { return sum + tr.len; }, 0);
+  }
+
+  function pointAlongTracks(tracks, t) {
+    if (!tracks || !tracks.length) return null;
+    const total = tracksLen(tracks);
+    if (total < 1) {
+      const end = tracks[tracks.length - 1].el.getPointAtLength(tracks[tracks.length - 1].len);
+      return { x: end.x, y: end.y };
+    }
+    let distLeft = Math.max(0, Math.min(1, t)) * total;
+    for (let i = 0; i < tracks.length; i++) {
+      const tr = tracks[i];
+      const last = i === tracks.length - 1;
+      if (distLeft <= tr.len || last) {
+        const pt = tr.el.getPointAtLength(Math.max(0, Math.min(tr.len, distLeft)));
+        return { x: pt.x, y: pt.y };
+      }
+      distLeft -= tr.len;
+    }
+    return null;
+  }
+
+  function buildAnimTracks(playObj) {
+    clearAnimMeasure();
+    const bag = {};
+    (playObj.players || []).forEach(function (pl) {
+      const motion = [];
+      const rest = [];
+      (playObj.assignments || []).forEach(function (a) {
+        if (a.from !== pl.id) return;
+        const tr = makeTrack(a, playObj);
+        if (!tr) return;
+        if (a.type === "motion") motion.push(tr);
+        else rest.push(tr);
+      });
+      if (motion.length || rest.length) {
+        bag[pl.id] = { motion: motion, play: rest, start: { x: pl.x, y: pl.y } };
+      }
+    });
+    return bag;
+  }
+
+  function phaseMs(maxLen, minMs, maxMs) {
+    if (maxLen < 8) return 0;
+    return Math.min(maxMs, Math.max(minMs, (maxLen / 160) * 1000));
+  }
+
+  function setAnimPositions(phase, t) {
+    if (!state.anim) return;
+    const pos = {};
+    Object.keys(state.anim.tracks).forEach(function (id) {
+      const bag = state.anim.tracks[id];
+      if (phase === "motion") {
+        pos[id] = bag.motion.length ? pointAlongTracks(bag.motion, t) : bag.start;
+      } else if (bag.play.length) {
+        pos[id] = pointAlongTracks(bag.play, t);
+      } else if (bag.motion.length) {
+        pos[id] = pointAlongTracks(bag.motion, 1);
+      } else {
+        pos[id] = bag.start;
+      }
+    });
+    state.anim.pos = pos;
+  }
+
+  function playerDrawPos(pl, live) {
+    if (live && state.anim && state.anim.pos && state.anim.pos[pl.id]) return state.anim.pos[pl.id];
+    return { x: pl.x, y: pl.y };
+  }
+
+  function animButtonLabel() {
+    if (!state.anim) return "Play";
+    if (state.anim.playing) return "Pause";
+    if (state.anim.phase === "done") return "Replay";
+    return "Play";
+  }
+
+  function syncAnimButtons() {
+    const label = animButtonLabel();
+    ["btnPlay", "btnPresentPlay"].forEach(function (id) {
+      const el = $(id);
+      if (el) el.textContent = label;
+    });
+  }
+
+  function stopAnim(reset) {
+    if (state.anim && state.anim.raf) {
+      cancelAnimationFrame(state.anim.raf);
+      state.anim.raf = 0;
+    }
+    if (reset) {
+      state.anim = null;
+      clearAnimMeasure();
+    } else if (state.anim) {
+      state.anim.playing = false;
+    }
+    syncAnimButtons();
+  }
+
+  function renderAnimFrame() {
+    const g = $("world");
+    if (!g) return;
+    g.innerHTML = "";
+    paintPlay(play(), g, { interactive: false, live: true });
+  }
+
+  function tickAnim(now) {
+    if (!state.anim || !state.anim.playing) return;
+    const t = Math.min(1, (now - state.anim.t0) / Math.max(state.anim.dur, 1));
+    setAnimPositions(state.anim.phase, t);
+    renderAnimFrame();
+    if (t < 1) {
+      state.anim.raf = requestAnimationFrame(tickAnim);
+      return;
+    }
+    if (state.anim.phase === "motion" && state.anim.hasPlay) {
+      state.anim.phase = "play";
+      state.anim.t0 = now;
+      state.anim.elapsed = 0;
+      state.anim.dur = state.anim.playDur;
+      state.anim.raf = requestAnimationFrame(tickAnim);
+      return;
+    }
+    state.anim.playing = false;
+    state.anim.phase = "done";
+    state.anim.raf = 0;
+    syncAnimButtons();
+  }
+
+  function startAnim() {
+    finishDraw(false);
+    state.selected = null;
+    stopAnim(true);
+    const p = play();
+    const tracks = buildAnimTracks(p);
+    let maxMotion = 0;
+    let maxPlay = 0;
+    Object.keys(tracks).forEach(function (id) {
+      maxMotion = Math.max(maxMotion, tracksLen(tracks[id].motion));
+      maxPlay = Math.max(maxPlay, tracksLen(tracks[id].play));
+    });
+    if (maxMotion < 8 && maxPlay < 8) {
+      toast("Draw a motion, route, block, or ball path first");
+      return;
+    }
+    const motionDur = phaseMs(maxMotion, 900, 1800);
+    const playDur = phaseMs(maxPlay, 1100, 2400);
+    const startMotion = motionDur > 0;
+    state.anim = {
+      playing: true,
+      phase: startMotion ? "motion" : "play",
+      t0: 0,
+      elapsed: 0,
+      dur: startMotion ? motionDur : playDur,
+      playDur: playDur,
+      hasPlay: playDur > 0,
+      tracks: tracks,
+      pos: {},
+      raf: 0,
+    };
+    setAnimPositions(state.anim.phase, 0);
+    syncAnimButtons();
+    renderAnimFrame();
+    state.anim.t0 = performance.now();
+    state.anim.raf = requestAnimationFrame(tickAnim);
+  }
+
+  function toggleAnim() {
+    if (state.anim && state.anim.playing) {
+      state.anim.elapsed = performance.now() - state.anim.t0;
+      stopAnim(false);
+      return;
+    }
+    if (state.anim && state.anim.phase !== "done") {
+      state.anim.playing = true;
+      state.anim.t0 = performance.now() - (state.anim.elapsed || 0);
+      syncAnimButtons();
+      state.anim.raf = requestAnimationFrame(tickAnim);
+      return;
+    }
+    startAnim();
   }
 
   function pathD(points, smooth) {
@@ -1126,6 +1344,7 @@
   }
 
   function selectPlay(id) {
+    stopAnim(true);
     commitPlayFields();
     state.fieldEdit = null;
     finishDraw(false);
@@ -1463,7 +1682,7 @@
 
   function renderHint() {
     const hints = {
-      select: "Drag players or lines. Double-click a circle to put initials under the position. Click a line, then drag the solid dots — or the hollow middle dot to curve it.",
+      select: "Drag players or lines. Play runs motion first, then the other lines. Double-click a circle to put initials under the position. Click a line, then drag the solid dots — or the hollow middle dot to curve it.",
       route: "Tap a player, then tap bend spots. After another line, the route starts at that arrow. Tap Enter to finish. Hold Alt to start from the circle.",
       block: "Tap the player. After motion or a ball path, the T-bar starts at that arrow — then tap where he blocks. Hold Alt to start from the circle.",
       motion: "Tap a player, then tap where he motions. After a ball path (or any line), motion starts at that arrow. Enter to finish. Hold Alt to start from the circle.",
@@ -1506,6 +1725,7 @@
 
   function paintPlay(p, g, opts) {
     const interactive = !!(opts && opts.interactive);
+    const live = !!(opts && opts.live);
     const bigDef = isDefensePlay(p);
     const cls = (g.getAttribute("class") || "").split(/\s+/).filter(function (c) {
       return c && c !== "defense-play";
@@ -1562,6 +1782,14 @@
 
     p.players.forEach(function (pl) {
       if (state.hideDef && pl.side === "def") return;
+      if (live && state.anim && state.anim.pos && state.anim.pos[pl.id]) {
+        const ghost = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        ghost.setAttribute("cx", pl.x);
+        ghost.setAttribute("cy", pl.y);
+        ghost.setAttribute("r", pl.side === "def" ? 12 : R);
+        ghost.setAttribute("class", "player-ghost");
+        g.appendChild(ghost);
+      }
       const tip = motionTip(p, pl.id);
       if (tip && dist(tip, pl) > 18) {
         const mark = document.createElementNS("http://www.w3.org/2000/svg", "circle");
@@ -1575,6 +1803,7 @@
 
     p.players.forEach((pl) => {
       if (state.hideDef && pl.side === "def") return;
+      const pos = playerDrawPos(pl, live);
       const wrap = document.createElementNS("http://www.w3.org/2000/svg", "g");
       const who = playerWho(pl, p);
       wrap.setAttribute("class", "player " + pl.side + " " + (pl.fill || "white") + (who ? " stacked" : "") + (interactive && state.selected && state.selected.kind === "player" && state.selected.id === pl.id ? " sel" : ""));
@@ -1584,28 +1813,28 @@
         const s = defGlyph(p);
         tri.setAttribute(
           "points",
-          pl.x + "," + (pl.y - s) + " " + (pl.x - s * 1.05) + "," + (pl.y + s * 0.75) + " " + (pl.x + s * 1.05) + "," + (pl.y + s * 0.75)
+          pos.x + "," + (pos.y - s) + " " + (pos.x - s * 1.05) + "," + (pos.y + s * 0.75) + " " + (pos.x + s * 1.05) + "," + (pos.y + s * 0.75)
         );
         wrap.appendChild(tri);
       } else {
         const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        c.setAttribute("cx", pl.x);
-        c.setAttribute("cy", pl.y);
+        c.setAttribute("cx", pos.x);
+        c.setAttribute("cy", pos.y);
         c.setAttribute("r", R);
         wrap.appendChild(c);
       }
       const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
       t.setAttribute("class", "pos");
-      t.setAttribute("x", pl.x);
-      t.setAttribute("y", who ? (pl.side === "off" ? pl.y - 3 : pl.y - 2) : pl.y + (bigDef && pl.side === "def" ? 7 : 5));
+      t.setAttribute("x", pos.x);
+      t.setAttribute("y", who ? (pl.side === "off" ? pos.y - 3 : pos.y - 2) : pos.y + (bigDef && pl.side === "def" ? 7 : 5));
       t.setAttribute("text-anchor", "middle");
       t.textContent = pl.label;
       wrap.appendChild(t);
       if (who) {
         const w = document.createElementNS("http://www.w3.org/2000/svg", "text");
         w.setAttribute("class", "who");
-        w.setAttribute("x", pl.x);
-        w.setAttribute("y", pl.y + (bigDef && pl.side === "def" ? 14 : 11));
+        w.setAttribute("x", pos.x);
+        w.setAttribute("y", pos.y + (bigDef && pl.side === "def" ? 14 : 11));
         w.setAttribute("text-anchor", "middle");
         w.textContent = who;
         wrap.appendChild(w);
@@ -1770,7 +1999,7 @@
     const p = play();
     const g = $("world");
     g.innerHTML = "";
-    paintPlay(p, g, { interactive: true });
+    paintPlay(p, g, { interactive: !state.anim, live: true });
     syncCurveToggle();
     syncWhoRow();
     fitPresentField();
@@ -1785,10 +2014,12 @@
   }
 
   function printAll() {
+    stopAnim(true);
     printPlays(state.book.plays || []);
   }
 
   function printSet() {
+    stopAnim(true);
     const plays = setPlays();
     if (!plays.length) {
       toast("Drag plays into the game list first");
@@ -1860,6 +2091,7 @@
   }
 
   function beginDraw(pl, type, pt, fromCircle, pointerType) {
+    stopAnim(true);
     let start = { x: pl.x, y: pl.y };
     let afterType = null;
     let afterId = null;
@@ -1917,6 +2149,10 @@
 
   function onPointerDown(evt) {
     if (evt.button !== 0) return;
+    if (state.anim) {
+      stopAnim(true);
+      renderField();
+    }
     evt.preventDefault();
     if (window.getSelection) window.getSelection().removeAllRanges();
     const pt = svgPoint(evt);
@@ -3368,6 +3604,7 @@
   }
 
   function enterPresent() {
+    stopAnim(true);
     commitPlayFields();
     state.presentFrom = state.listFocus === "set" && setPlays().length ? "set" : "book";
     state.present = true;
@@ -3383,6 +3620,7 @@
 
   function exitPresent(fromFs) {
     if (!state.present) return;
+    stopAnim(true);
     state.present = false;
     state.presentFrom = null;
     clearSketch();
@@ -3487,6 +3725,7 @@
     $("btnFlip").addEventListener("click", flipCurrent);
     $("btnDelPlay").addEventListener("click", deletePlay);
     $("btnPrint").addEventListener("click", () => {
+      stopAnim(true);
       commitPlayFields();
       state.selected = null;
       state.drawing = null;
@@ -3513,6 +3752,7 @@
     $("btnSetPrev").addEventListener("click", () => stepSet(-1));
     $("btnSetNext").addEventListener("click", () => stepSet(1));
     window.addEventListener("beforeprint", () => {
+      stopAnim(true);
       if (document.body.classList.contains("print-book")) {
         document.querySelectorAll("#printBook .sheet").forEach(fitSheetChrome);
         return;
@@ -3551,6 +3791,8 @@
     if ($("btnTouchCancel")) $("btnTouchCancel").addEventListener("click", function () { finishDraw(false); });
     $("btnUndo").addEventListener("click", undo);
     $("btnRedo").addEventListener("click", redo);
+    if ($("btnPlay")) $("btnPlay").addEventListener("click", toggleAnim);
+    if ($("btnPresentPlay")) $("btnPresentPlay").addEventListener("click", toggleAnim);
     if ($("btnPresent")) $("btnPresent").addEventListener("click", togglePresent);
     if ($("btnPresentExit")) $("btnPresentExit").addEventListener("click", () => exitPresent());
     if ($("btnPresentPrev")) $("btnPresentPrev").addEventListener("click", () => stepPlays(-1));
@@ -3623,10 +3865,20 @@
       if (typing) return;
       if (state.studio) return;
       if (state.present) {
+        if (e.key === " " || e.code === "Space") {
+          e.preventDefault();
+          toggleAnim();
+          return;
+        }
         if (e.key === "ArrowDown" || e.key === "ArrowUp") {
           e.preventDefault();
           stepPlays(e.key === "ArrowDown" ? 1 : -1);
         }
+        return;
+      }
+      if ((e.key === " " || e.code === "Space") && !state.drawing) {
+        e.preventDefault();
+        toggleAnim();
         return;
       }
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
