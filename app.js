@@ -627,31 +627,46 @@
     measurePathEl().appendChild(el);
     const len = el.getTotalLength();
     if (!(len > 2)) return null;
-    return { el: el, len: len };
+    return { el: el, len: len, type: a.type, speed: trackSpeed(a.type) };
+  }
+
+  function trackSpeed(type) {
+    if (type === "block") return 120;
+    if (type === "motion") return 150;
+    if (type === "ball") return 185;
+    return 170;
   }
 
   function tracksLen(tracks) {
     return (tracks || []).reduce(function (sum, tr) { return sum + tr.len; }, 0);
   }
 
-  function pointAlongTracks(tracks, t) {
+  function tracksMs(tracks) {
+    return (tracks || []).reduce(function (sum, tr) {
+      return sum + (tr.len / Math.max(tr.speed, 1)) * 1000;
+    }, 0);
+  }
+
+  function pointAlongTracksMs(tracks, elapsed) {
     if (!tracks || !tracks.length) return null;
-    const total = tracksLen(tracks);
-    if (total < 1) {
-      const end = tracks[tracks.length - 1].el.getPointAtLength(tracks[tracks.length - 1].len);
-      return { x: end.x, y: end.y };
-    }
-    let distLeft = Math.max(0, Math.min(1, t)) * total;
+    let left = Math.max(0, elapsed);
     for (let i = 0; i < tracks.length; i++) {
       const tr = tracks[i];
+      const ms = (tr.len / Math.max(tr.speed, 1)) * 1000;
       const last = i === tracks.length - 1;
-      if (distLeft <= tr.len || last) {
-        const pt = tr.el.getPointAtLength(Math.max(0, Math.min(tr.len, distLeft)));
+      if (left <= ms || last) {
+        const t = ms < 1 ? 1 : Math.min(1, left / ms);
+        const pt = tr.el.getPointAtLength(Math.max(0, Math.min(tr.len, t * tr.len)));
         return { x: pt.x, y: pt.y };
       }
-      distLeft -= tr.len;
+      left -= ms;
     }
     return null;
+  }
+
+  function pointAlongTracks(tracks, t) {
+    if (!tracks || !tracks.length) return null;
+    return pointAlongTracksMs(tracks, t * Math.max(tracksMs(tracks), 1));
   }
 
   function buildAnimTracks(playObj) {
@@ -674,22 +689,22 @@
     return bag;
   }
 
-  function phaseMs(maxLen, minMs, maxMs) {
-    if (maxLen < 8) return 0;
-    return Math.min(maxMs, Math.max(minMs, (maxLen / 160) * 1000));
+  function phaseMs(ms) {
+    if (ms < 40) return 0;
+    return Math.min(2800, Math.max(280, ms));
   }
 
-  function setAnimPositions(phase, t) {
+  function setAnimPositions(phase, elapsed) {
     if (!state.anim) return;
     const pos = {};
     Object.keys(state.anim.tracks).forEach(function (id) {
       const bag = state.anim.tracks[id];
       if (phase === "motion") {
-        pos[id] = bag.motion.length ? pointAlongTracks(bag.motion, t) : bag.start;
+        pos[id] = bag.motion.length ? pointAlongTracksMs(bag.motion, elapsed) : bag.start;
       } else if (bag.play.length) {
-        pos[id] = pointAlongTracks(bag.play, t);
+        pos[id] = pointAlongTracksMs(bag.play, elapsed);
       } else if (bag.motion.length) {
-        pos[id] = pointAlongTracks(bag.motion, 1);
+        pos[id] = pointAlongTracksMs(bag.motion, 1e9);
       } else {
         pos[id] = bag.start;
       }
@@ -740,10 +755,10 @@
 
   function tickAnim(now) {
     if (!state.anim || !state.anim.playing) return;
-    const t = Math.min(1, (now - state.anim.t0) / Math.max(state.anim.dur, 1));
-    setAnimPositions(state.anim.phase, t);
+    const elapsed = now - state.anim.t0;
+    setAnimPositions(state.anim.phase, elapsed);
     renderAnimFrame();
-    if (t < 1) {
+    if (elapsed < state.anim.dur) {
       state.anim.raf = requestAnimationFrame(tickAnim);
       return;
     }
@@ -770,15 +785,15 @@
     let maxMotion = 0;
     let maxPlay = 0;
     Object.keys(tracks).forEach(function (id) {
-      maxMotion = Math.max(maxMotion, tracksLen(tracks[id].motion));
-      maxPlay = Math.max(maxPlay, tracksLen(tracks[id].play));
+      maxMotion = Math.max(maxMotion, tracksMs(tracks[id].motion));
+      maxPlay = Math.max(maxPlay, tracksMs(tracks[id].play));
     });
-    if (maxMotion < 8 && maxPlay < 8) {
+    if (!Object.keys(tracks).length) {
       toast("Draw a motion, route, block, or ball path first");
       return;
     }
-    const motionDur = phaseMs(maxMotion, 900, 1800);
-    const playDur = phaseMs(maxPlay, 1100, 2400);
+    const motionDur = phaseMs(maxMotion);
+    const playDur = phaseMs(maxPlay);
     const startMotion = motionDur > 0;
     state.anim = {
       playing: true,
@@ -1682,7 +1697,7 @@
 
   function renderHint() {
     const hints = {
-      select: "Drag players or lines. Play runs motion first, then the other lines. Double-click a circle to put initials under the position. Click a line, then drag the solid dots — or the hollow middle dot to curve it.",
+      select: "Drag players or lines. Play runs motion first, then each player runs his own line — a short block finishes before a deep route. Double-click a circle to put initials under the position.",
       route: "Tap a player, then tap bend spots. After another line, the route starts at that arrow. Tap Enter to finish. Hold Alt to start from the circle.",
       block: "Tap the player. After motion or a ball path, the T-bar starts at that arrow — then tap where he blocks. Hold Alt to start from the circle.",
       motion: "Tap a player, then tap where he motions. After a ball path (or any line), motion starts at that arrow. Enter to finish. Hold Alt to start from the circle.",
