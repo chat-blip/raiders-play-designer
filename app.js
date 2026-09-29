@@ -691,7 +691,7 @@
 
   function phaseMs(ms) {
     if (ms < 40) return 0;
-    return Math.min(2800, Math.max(280, ms));
+    return ms + 80;
   }
 
   function setAnimPositions(phase, elapsed) {
@@ -762,11 +762,15 @@
       state.anim.raf = requestAnimationFrame(tickAnim);
       return;
     }
+    setAnimPositions(state.anim.phase, 1e9);
+    renderAnimFrame();
     if (state.anim.phase === "motion" && state.anim.hasPlay) {
       state.anim.phase = "play";
       state.anim.t0 = now;
       state.anim.elapsed = 0;
       state.anim.dur = state.anim.playDur;
+      setAnimPositions("play", 0);
+      renderAnimFrame();
       state.anim.raf = requestAnimationFrame(tickAnim);
       return;
     }
