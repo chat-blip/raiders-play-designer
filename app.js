@@ -3467,7 +3467,8 @@
   }
 
   function panelMax(which) {
-    return Math.max(SIDE_MIN, window.innerWidth - otherPanelWidth(which) - 14 - PLAY_MIN);
+    const gutters = window.matchMedia("(pointer: coarse)").matches ? 36 : 24;
+    return Math.max(SIDE_MIN, window.innerWidth - otherPanelWidth(which) - gutters - PLAY_MIN);
   }
 
   function applySideWidth(px) {
@@ -3491,20 +3492,12 @@
       : () => document.querySelector(".sidebar").getBoundingClientRect().width;
     const storeKey = which === "tool" ? "toolW" : "sideW";
     const reset = which === "tool" ? TOOL_DEFAULT : SIDE_DEFAULT;
-    split.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0 || state.present) return;
-      e.preventDefault();
-      state.colResize = { x: e.clientX, w: measure(), which: which };
-      split.classList.add("dragging");
-      try {
-        split.setPointerCapture(e.pointerId);
-      } catch (err) {}
-    });
-    split.addEventListener("pointermove", (e) => {
+    function onMove(e) {
       if (!state.colResize || state.colResize.which !== which) return;
+      e.preventDefault();
       const delta = e.clientX - state.colResize.x;
       apply(state.colResize.w + (which === "tool" ? -delta : delta));
-    });
+    }
     function endColResize() {
       if (!state.colResize || state.colResize.which !== which) return;
       state.colResize = null;
@@ -3514,8 +3507,21 @@
       saveUi(patch);
       scheduleFitChrome();
     }
-    split.addEventListener("pointerup", endColResize);
-    split.addEventListener("pointercancel", endColResize);
+    split.addEventListener("pointerdown", (e) => {
+      if (state.present) return;
+      if (e.isPrimary === false) return;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      state.colResize = { x: e.clientX, w: measure(), which: which };
+      split.classList.add("dragging");
+      try {
+        split.setPointerCapture(e.pointerId);
+      } catch (err) {}
+    });
+    document.addEventListener("pointermove", onMove, { passive: false });
+    document.addEventListener("pointerup", endColResize);
+    document.addEventListener("pointercancel", endColResize);
     split.addEventListener("dblclick", () => {
       apply(reset);
       const patch = {};

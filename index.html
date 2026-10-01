@@ -57,20 +57,29 @@
     }
     .layout {
       display: grid;
-      grid-template-columns: var(--side-w, 268px) 7px minmax(240px, 1fr) 7px var(--tool-w, 220px);
+      grid-template-columns: var(--side-w, 268px) 12px minmax(240px, 1fr) 12px var(--tool-w, 220px);
       min-height: 0;
     }
     .col-resizer {
       cursor: col-resize;
       background: #d5dde7;
       position: relative;
-      z-index: 3;
+      z-index: 5;
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
     }
     .col-resizer:hover, .col-resizer.dragging { background: var(--navy); }
     .col-resizer::after {
       content: "";
       position: absolute;
-      inset: 0 -4px;
+      inset: 0 -18px;
+    }
+    @media (pointer: coarse) {
+      .layout {
+        grid-template-columns: var(--side-w, 268px) 18px minmax(240px, 1fr) 18px var(--tool-w, 220px);
+      }
+      .col-resizer::after { inset: 0 -22px; }
     }
     .sidebar, .tools {
       background: var(--panel); border-color: #d5dde7; overflow: auto; padding: 8px 10px;
@@ -1065,10 +1074,10 @@
   </div>
   <div id="toast"></div>
   <div id="offlineChip" hidden>Offline — saved on this device</div>
-  <script src="plays.js?v=cloud53"></script>
-  <script src="playbook-data.js?v=cloud53"></script>
-  <script src="cloud-config.js?v=cloud53"></script>
-  <script src="cloud.js?v=cloud53"></script>
-  <script src="app.js?v=cloud53"></script>
+  <script src="plays.js?v=cloud54"></script>
+  <script src="playbook-data.js?v=cloud54"></script>
+  <script src="cloud-config.js?v=cloud54"></script>
+  <script src="cloud.js?v=cloud54"></script>
+  <script src="app.js?v=cloud54"></script>
 </body>
 </html>
