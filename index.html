@@ -34,7 +34,7 @@
       user-select: none;
     }
     .sheet, .sheet-body, svg#field { -webkit-user-drag: none; }
-    .play-item, .play-list { -webkit-user-drag: auto; }
+    .play-item, .play-list { -webkit-user-drag: none; }
     input, textarea, select { -webkit-user-select: text; user-select: text; }
     .app { display: grid; grid-template-rows: 52px 1fr; height: 100%; }
     .top {
@@ -132,6 +132,7 @@
       display: flex; gap: 5px; align-items: center; text-align: left;
       width: 100%; border: 1px solid transparent; background: #fff; border-radius: 4px; padding: 3px 6px;
       cursor: grab;
+      -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
     }
     .play-item:hover { border-color: #c9d3df; }
     .play-item.active { border-color: var(--navy); background: #e8eef6; }
@@ -139,9 +140,24 @@
     .play-item.drop-before { box-shadow: inset 0 2px 0 var(--navy); }
     .play-item.drop-after { box-shadow: inset 0 -2px 0 var(--navy); }
     .play-item .grip {
-      flex: none; width: 6px; align-self: stretch; margin: 0;
-      background: repeating-linear-gradient(to bottom, #b7c0cc 0 2px, transparent 2px 4px);
-      opacity: 0.7;
+      flex: none; width: 16px; align-self: stretch; min-height: 22px; margin: 0;
+      background: radial-gradient(#8a97a8 1.2px, transparent 1.35px) 2px 1px / 6px 6px;
+      opacity: 0.9;
+      touch-action: none;
+      cursor: grab;
+    }
+    @media (pointer: coarse) {
+      .play-item {
+        padding: 8px 8px;
+        min-height: 46px;
+        gap: 8px;
+      }
+      .play-item .grip {
+        width: 32px;
+        min-height: 38px;
+        background: radial-gradient(#5c6b7d 1.7px, transparent 1.9px) 5px 3px / 11px 11px;
+      }
+      .play-item .fav-btn, .play-item .rm { font-size: 18px; padding: 6px; }
     }
     .play-item .n { font-weight: 800; width: 22px; flex: none; font-size: 12px; }
     .play-item .n.pass { color: var(--red); }
@@ -854,7 +870,7 @@
           <input id="playSearch" placeholder="Search plays" />
         </div>
         <div class="row">
-          <select id="playSort" title="Sort the playbook list. Drag order is your custom list. Play A–Z uses the Play box (A, B, Y, Z). Newest is when you created the play. Recently tweaked is the last time you edited it.">
+          <select id="playSort" title="Sort the playbook list. Drag order: grab the dotted handle, or hold a play, then drag. Play A–Z uses the Play box (A, B, Y, Z). Newest is when you created the play. Recently tweaked is the last time you edited it.">
             <option value="manual">Sort: drag order</option>
             <option value="letter">Sort: Play A–Z</option>
             <option value="tweaked">Sort: recently tweaked</option>
@@ -1074,10 +1090,10 @@
   </div>
   <div id="toast"></div>
   <div id="offlineChip" hidden>Offline — saved on this device</div>
-  <script src="plays.js?v=cloud54"></script>
-  <script src="playbook-data.js?v=cloud54"></script>
-  <script src="cloud-config.js?v=cloud54"></script>
-  <script src="cloud.js?v=cloud54"></script>
-  <script src="app.js?v=cloud54"></script>
+  <script src="plays.js?v=cloud55"></script>
+  <script src="playbook-data.js?v=cloud55"></script>
+  <script src="cloud-config.js?v=cloud55"></script>
+  <script src="cloud.js?v=cloud55"></script>
+  <script src="app.js?v=cloud55"></script>
 </body>
 </html>

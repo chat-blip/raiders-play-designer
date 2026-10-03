@@ -26,6 +26,7 @@
     curve: true,
     snap: true,
     listDrag: null,
+    listHold: null,
     listFocus: "book",
     presentFrom: null,
     colResize: null,
@@ -984,12 +985,97 @@
     return { id: hit.dataset.id, after: after };
   }
 
+  function clearListHold() {
+    if (state.listHold && state.listHold.timer) clearTimeout(state.listHold.timer);
+    state.listHold = null;
+  }
+
+  function startListDrag(li, e, from) {
+    clearListHold();
+    if (e && e.preventDefault) e.preventDefault();
+    setListFocus(from === "set" ? "set" : "book");
+    state.listDrag = {
+      id: li.dataset.id,
+      y: e.clientY,
+      x: e.clientX,
+      moved: false,
+      toId: null,
+      after: false,
+      from: from,
+      target: from === "set" ? "set" : null,
+      coarse: e.pointerType === "touch" || e.pointerType === "pen",
+    };
+    try {
+      li.setPointerCapture(e.pointerId);
+    } catch (err) {}
+  }
+
+  function bindPlayRowDrag(li, from) {
+    li.addEventListener("pointerdown", function (e) {
+      if (state.present) return;
+      if (e.isPrimary === false) return;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      if (e.target.closest(".fav-btn, .rm")) return;
+      const coarse = e.pointerType === "touch" || e.pointerType === "pen";
+      const onGrip = !!e.target.closest(".grip");
+      if (!coarse || onGrip) {
+        startListDrag(li, e, from);
+        return;
+      }
+      clearListHold();
+      state.listHold = {
+        id: li.dataset.id,
+        from: from,
+        x: e.clientX,
+        y: e.clientY,
+        pointerId: e.pointerId,
+        pointerType: e.pointerType,
+        el: li,
+        timer: setTimeout(function () {
+          const hold = state.listHold;
+          if (!hold || hold.id !== li.dataset.id) return;
+          state.listHold = null;
+          startListDrag(li, {
+            clientX: hold.x,
+            clientY: hold.y,
+            pointerId: hold.pointerId,
+            pointerType: hold.pointerType,
+            preventDefault: function () {},
+          }, from);
+          li.classList.add("dragging");
+          if (navigator.vibrate) {
+            try { navigator.vibrate(12); } catch (err) {}
+          }
+        }, 180),
+      };
+    });
+    li.addEventListener("contextmenu", function (e) {
+      if (state.listDrag || state.listHold) e.preventDefault();
+    });
+  }
+
+  function scrollListWhileDrag(e, d) {
+    const box = d.from === "set" ? $("setList") : $("playList");
+    if (!box) return;
+    const r = box.getBoundingClientRect();
+    const edge = 40;
+    if (e.clientY < r.top + edge) box.scrollTop -= 18;
+    else if (e.clientY > r.bottom - edge) box.scrollTop += 18;
+  }
+
   function onListDragMove(e) {
+    if (state.listHold) {
+      const h = state.listHold;
+      if (Math.abs(e.clientX - h.x) > 8 || Math.abs(e.clientY - h.y) > 8) clearListHold();
+      return;
+    }
     const d = state.listDrag;
     if (!d) return;
-    if (!d.moved && Math.abs(e.clientY - d.y) < 5 && Math.abs((e.clientX || 0) - (d.x || 0)) < 5) return;
+    const slop = d.coarse ? 10 : 5;
+    if (!d.moved && Math.abs(e.clientY - d.y) < slop && Math.abs((e.clientX || 0) - (d.x || 0)) < slop) return;
     d.moved = true;
     e.preventDefault();
+    scrollListWhileDrag(e, d);
     document.querySelectorAll(".play-item").forEach((el) => {
       el.classList.toggle("dragging", el.dataset.id === d.id);
     });
@@ -1033,6 +1119,12 @@
   }
 
   function onListDragUp() {
+    if (state.listHold) {
+      const id = state.listHold.id;
+      clearListHold();
+      if (id) selectPlay(id);
+      return;
+    }
     const d = state.listDrag;
     if (!d) return;
     state.listDrag = null;
@@ -1308,7 +1400,7 @@
       li.setAttribute("role", "button");
       li.tabIndex = 0;
       li.innerHTML =
-        '<span class="grip" aria-hidden="true"></span><span class="n ' +
+        '<span class="grip" aria-hidden="true" title="Drag to reorder"></span><span class="n ' +
         playKind(p) +
         '">' +
         escapeHtml(p.number) +
@@ -1331,16 +1423,7 @@
         e.stopPropagation();
         toggleFavorite(p.id);
       });
-      li.addEventListener("pointerdown", (e) => {
-        if (e.button !== 0) return;
-        if (e.target.closest(".fav-btn")) return;
-        e.preventDefault();
-        setListFocus("book");
-        state.listDrag = { id: p.id, y: e.clientY, x: e.clientX, moved: false, toId: null, after: false, from: "book", target: null };
-        try {
-          li.setPointerCapture(e.pointerId);
-        } catch (err) {}
-      });
+      bindPlayRowDrag(li, "book");
       li.addEventListener("keydown", (e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
@@ -1544,7 +1627,7 @@
       li.setAttribute("role", "button");
       li.tabIndex = 0;
       li.innerHTML =
-        '<span class="seq">' +
+        '<span class="grip" aria-hidden="true" title="Drag to reorder"></span><span class="seq">' +
         (i + 1) +
         '</span><span class="n ' +
         playKind(p) +
@@ -1565,16 +1648,7 @@
         e.stopPropagation();
         removeFromSet(p.id);
       });
-      li.addEventListener("pointerdown", function (e) {
-        if (e.button !== 0) return;
-        if (e.target.closest(".rm")) return;
-        e.preventDefault();
-        setListFocus("set");
-        state.listDrag = { id: p.id, y: e.clientY, x: e.clientX, moved: false, toId: null, after: false, from: "set", target: "set" };
-        try {
-          li.setPointerCapture(e.pointerId);
-        } catch (err) {}
-      });
+      bindPlayRowDrag(li, "set");
       li.addEventListener("keydown", function (e) {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
