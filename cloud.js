@@ -43,8 +43,8 @@
 
   function otherShell() {
     var p = location.pathname || "";
-    if (/drag\.html$/i.test(p)) return "cols.html";
-    return "drag.html";
+    if (/hold\.html$/i.test(p)) return "drag.html";
+    return "hold.html";
   }
 
   function isOffline() {

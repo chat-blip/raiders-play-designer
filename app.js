@@ -993,6 +993,7 @@
   function startListDrag(li, e, from) {
     clearListHold();
     if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
     setListFocus(from === "set" ? "set" : "book");
     state.listDrag = {
       id: li.dataset.id,
@@ -1004,53 +1005,47 @@
       from: from,
       target: from === "set" ? "set" : null,
       coarse: e.pointerType === "touch" || e.pointerType === "pen",
+      fromHandle: true,
     };
+    const cap = (e.currentTarget && e.currentTarget.setPointerCapture) ? e.currentTarget : li;
     try {
-      li.setPointerCapture(e.pointerId);
-    } catch (err) {}
+      cap.setPointerCapture(e.pointerId);
+    } catch (err) {
+      try { li.setPointerCapture(e.pointerId); } catch (err2) {}
+    }
+    li.classList.add("dragging");
+    if (e.pointerType === "touch" || e.pointerType === "pen") {
+      if (navigator.vibrate) {
+        try { navigator.vibrate(10); } catch (err) {}
+      }
+    }
   }
 
   function bindPlayRowDrag(li, from) {
-    li.addEventListener("pointerdown", function (e) {
+    const handle = li.querySelector(".drag-side") || li.querySelector(".grip");
+    function onHandleDown(e) {
       if (state.present) return;
       if (e.isPrimary === false) return;
       if (e.pointerType === "mouse" && e.button !== 0) return;
+      startListDrag(li, e, from);
+    }
+    if (handle) {
+      handle.addEventListener("pointerdown", onHandleDown, { passive: false });
+    }
+    li.addEventListener("pointerdown", function (e) {
+      if (state.present) return;
+      if (e.pointerType !== "mouse" || e.button !== 0) return;
+      if (e.target.closest(".fav-btn, .rm, .drag-side, .grip")) return;
+      startListDrag(li, e, from);
+    });
+    li.addEventListener("click", function (e) {
+      if (state.listDrag && state.listDrag.moved) return;
       if (e.target.closest(".fav-btn, .rm")) return;
-      const coarse = e.pointerType === "touch" || e.pointerType === "pen";
-      const onGrip = !!e.target.closest(".grip");
-      if (!coarse || onGrip) {
-        startListDrag(li, e, from);
-        return;
-      }
-      clearListHold();
-      state.listHold = {
-        id: li.dataset.id,
-        from: from,
-        x: e.clientX,
-        y: e.clientY,
-        pointerId: e.pointerId,
-        pointerType: e.pointerType,
-        el: li,
-        timer: setTimeout(function () {
-          const hold = state.listHold;
-          if (!hold || hold.id !== li.dataset.id) return;
-          state.listHold = null;
-          startListDrag(li, {
-            clientX: hold.x,
-            clientY: hold.y,
-            pointerId: hold.pointerId,
-            pointerType: hold.pointerType,
-            preventDefault: function () {},
-          }, from);
-          li.classList.add("dragging");
-          if (navigator.vibrate) {
-            try { navigator.vibrate(12); } catch (err) {}
-          }
-        }, 180),
-      };
+      if (e.target.closest(".drag-side") && e.pointerType !== "mouse") return;
+      selectPlay(li.dataset.id);
     });
     li.addEventListener("contextmenu", function (e) {
-      if (state.listDrag || state.listHold) e.preventDefault();
+      if (e.target.closest(".drag-side, .grip") || state.listDrag) e.preventDefault();
     });
   }
 
@@ -1065,13 +1060,12 @@
 
   function onListDragMove(e) {
     if (state.listHold) {
-      const h = state.listHold;
-      if (Math.abs(e.clientX - h.x) > 8 || Math.abs(e.clientY - h.y) > 8) clearListHold();
+      clearListHold();
       return;
     }
     const d = state.listDrag;
     if (!d) return;
-    const slop = d.coarse ? 10 : 5;
+    const slop = d.fromHandle && d.coarse ? 3 : d.coarse ? 10 : 5;
     if (!d.moved && Math.abs(e.clientY - d.y) < slop && Math.abs((e.clientX || 0) - (d.x || 0)) < slop) return;
     d.moved = true;
     e.preventDefault();
@@ -1119,12 +1113,7 @@
   }
 
   function onListDragUp() {
-    if (state.listHold) {
-      const id = state.listHold.id;
-      clearListHold();
-      if (id) selectPlay(id);
-      return;
-    }
+    clearListHold();
     const d = state.listDrag;
     if (!d) return;
     state.listDrag = null;
@@ -1380,6 +1369,8 @@
     const ul = $("playList");
     ul.innerHTML = "";
     ul.classList.toggle("sorted", bookSortMode() !== "manual");
+    const hint = $("dragHint");
+    if (hint) hint.hidden = bookSortMode() !== "manual";
     const plays = visibleBookPlays();
     updatePlayCount();
     updatePresentBar();
@@ -1400,11 +1391,11 @@
       li.setAttribute("role", "button");
       li.tabIndex = 0;
       li.innerHTML =
-        '<span class="grip" aria-hidden="true" title="Drag to reorder"></span><span class="n ' +
+        '<span class="drag-side" title="Press the left bars, then drag"><span class="grip" aria-hidden="true"></span><span class="n ' +
         playKind(p) +
         '">' +
         escapeHtml(p.number) +
-        '</span><span class="meta"><b>' +
+        '</span></span><span class="meta"><b>' +
         escapeHtml(playListFormation(p)) +
         "</b> " +
         escapeHtml(p.name) +
@@ -1627,13 +1618,13 @@
       li.setAttribute("role", "button");
       li.tabIndex = 0;
       li.innerHTML =
-        '<span class="grip" aria-hidden="true" title="Drag to reorder"></span><span class="seq">' +
+        '<span class="drag-side" title="Press the left bars, then drag"><span class="grip" aria-hidden="true"></span><span class="seq">' +
         (i + 1) +
         '</span><span class="n ' +
         playKind(p) +
         '">' +
         escapeHtml(p.number) +
-        '</span><span class="meta"><b>' +
+        '</span></span><span class="meta"><b>' +
         escapeHtml(playListFormation(p)) +
         "</b> " +
         escapeHtml(p.name) +
