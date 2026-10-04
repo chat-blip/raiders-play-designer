@@ -584,13 +584,28 @@
       if (p.side === "off" && isOLine(p)) return;
       p.x = 2 * CX - p.x;
     });
+    pinOLine(copy.players);
+    const byId = {};
+    copy.players.forEach((p) => {
+      if (p && p.id) byId[p.id] = p;
+    });
     copy.assignments.forEach((a) => {
-      if (a.from === "LT" || a.from === "LG" || a.from === "C" || a.from === "RG" || a.from === "RT") return;
-      a.points.forEach((pt) => {
+      const pl = byId[a.from];
+      if (pl && isOLine(pl)) {
+        const ax = pl.x;
+        (a.points || []).forEach((pt) => {
+          pt.x = 2 * ax - pt.x;
+        });
+        if (!a.afterId && a.points && a.points[0]) {
+          a.points[0].x = pl.x;
+          a.points[0].y = pl.y;
+        }
+        return;
+      }
+      (a.points || []).forEach((pt) => {
         pt.x = 2 * CX - pt.x;
       });
     });
-    pinOLine(copy.players);
     return copy;
   }
 
