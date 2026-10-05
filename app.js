@@ -1809,7 +1809,8 @@
     }
 
     line(36, los, 1164, los, "los");
-    const five = 52;
+    const four = 100;
+    const five = (four * 5) / 4;
     line(36, los - five, 1164, los - five, "yard5");
     line(36, los + five, 1164, los + five, "yard5");
     g.appendChild(marks);
