@@ -43,8 +43,8 @@
 
   function otherShell() {
     var p = location.pathname || "";
-    if (/ball\.html$/i.test(p)) return "depth.html";
-    return "ball.html";
+    if (/sync\.html$/i.test(p)) return "ball.html";
+    return "sync.html";
   }
 
   function isOffline() {
@@ -86,6 +86,9 @@
 
   function reloadFresh() {
     if (isOffline()) return;
+    try {
+      sessionStorage.setItem("raiders-prefer-cloud", "1");
+    } catch (e) {}
     const go = function () {
       location.replace(appDir() + otherShell() + "?t=" + Date.now());
     };
@@ -121,10 +124,18 @@
   }
 
   function signOut() {
-    try {
-      localStorage.removeItem(UNLOCK);
-    } catch (e) {}
-    reloadFresh();
+    const done = function () {
+      try {
+        localStorage.removeItem(UNLOCK);
+      } catch (e) {}
+      reloadFresh();
+    };
+    const flush = window.RaidersFlushCloud;
+    if (typeof flush === "function") {
+      Promise.resolve(flush()).then(done, done);
+      return;
+    }
+    done();
   }
 
   function showGate() {
@@ -193,7 +204,7 @@
     const r = await fetchOk(
       api + "/repos/" + c.owner + "/" + c.repo + "/contents/" + c.path,
       { headers: headers, cache: "no-store" },
-      5000
+      8000
     );
     if (!r.ok) return null;
     const meta = await r.json();
@@ -232,7 +243,7 @@
           if (fromApi) return fromApi;
         } catch (e) {}
         return await pullFromRaw();
-      })(), 6000);
+      })(), 10000);
     } catch (e) {
       return null;
     }
@@ -258,6 +269,7 @@
         method: "PUT",
         headers: headers,
         body: JSON.stringify(payload),
+        keepalive: true,
       }, 8000);
       if (r.status === 409 || r.status === 422) {
         const latest = await fetchOk(api + "/repos/" + c.owner + "/" + c.repo + "/contents/" + c.path, {
@@ -266,11 +278,23 @@
         if (latest.ok) {
           const meta = await latest.json();
           window.RaidersCloud.sha = meta.sha;
+          let theirs = null;
+          try {
+            theirs = JSON.parse(decodeB64(meta.content));
+          } catch (e) {}
+          const ourAt = (book && book.exportedAt) || 0;
+          const theirAt = (theirs && theirs.exportedAt) || 0;
+          const ourN = book && Array.isArray(book.plays) ? book.plays.length : 0;
+          const theirN = theirs && Array.isArray(theirs.plays) ? theirs.plays.length : 0;
+          if (theirs && theirN && (theirAt > ourAt || (theirAt === ourAt && theirN > ourN))) {
+            return { ok: true, book: theirs };
+          }
           payload.sha = meta.sha;
           r = await fetchOk(api + "/repos/" + c.owner + "/" + c.repo + "/contents/" + c.path, {
             method: "PUT",
             headers: headers,
             body: JSON.stringify(payload),
+            keepalive: true,
           }, 8000);
         }
       }

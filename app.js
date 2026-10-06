@@ -213,14 +213,19 @@
     state.dirtyTimer = setTimeout(save, 180);
   }
 
-  function save() {
-    if (state.book) state.book.exportedAt = Date.now();
+  function persistBook(book) {
     try {
-      localStorage.setItem(STORE, JSON.stringify(state.book));
+      localStorage.setItem(STORE, JSON.stringify(book || state.book));
+      return true;
     } catch (e) {
-      toast("Could not save locally");
+      return false;
     }
-    scheduleCloudSave();
+  }
+
+  function save(opts) {
+    if (state.book) state.book.exportedAt = Date.now();
+    if (!persistBook(state.book)) toast("Could not save locally");
+    if (!opts || opts.cloud !== false) scheduleCloudSave();
   }
 
   function scheduleCloudSave() {
@@ -228,15 +233,46 @@
     state.cloudTimer = setTimeout(pushCloud, 2000);
   }
 
+  function adoptCloudBook(book) {
+    if (!bookOk(book)) return false;
+    state.book = book;
+    ensureSets(state.book);
+    if (!state.book.plays.some(function (p) { return p.id === state.playId; })) {
+      state.playId = state.book.plays[0].id;
+    }
+    persistBook(state.book);
+    return true;
+  }
+
   function pushCloud() {
     if (navigator.onLine === false) return;
     if (!window.RaidersCloud || !window.RaidersCloud.canPush()) return;
     window.RaidersCloud.push(state.book).then(function (res) {
+      if (res && res.book && bookOk(res.book) && (res.book.exportedAt || 0) > ((state.book && state.book.exportedAt) || 0)) {
+        if (adoptCloudBook(res.book)) render();
+        return;
+      }
       if (res && res.ok) return;
       if (!res || res.reason === "offline" || res.reason === "network") return;
       toast("Cloud save missed — will try again");
     });
   }
+
+  async function flushCloud() {
+    clearTimeout(state.dirtyTimer);
+    clearTimeout(state.cloudTimer);
+    if (!state.book) return;
+    if (!persistBook(state.book)) toast("Could not save locally");
+    if (navigator.onLine === false) return;
+    if (!window.RaidersCloud || !window.RaidersCloud.canPush()) return;
+    const res = await window.RaidersCloud.push(state.book);
+    if (res && res.book && bookOk(res.book)) adoptCloudBook(res.book);
+    else if (res && !res.ok && res.reason !== "offline" && res.reason !== "network") {
+      toast("Cloud save missed — will try again");
+    }
+  }
+
+  window.RaidersFlushCloud = flushCloud;
 
   function bookOk(b) {
     return !!(b && Array.isArray(b.plays) && b.plays.length);
@@ -269,9 +305,14 @@
 
   async function loadPreferred() {
     state.needCloudPush = false;
+    state.cloudNote = "";
+    let forceCloud = false;
+    try {
+      forceCloud = sessionStorage.getItem("raiders-prefer-cloud") === "1";
+      sessionStorage.removeItem("raiders-prefer-cloud");
+    } catch (e) {}
     const local = load();
     if (navigator.onLine === false) {
-      state.needCloudPush = bookOk(local);
       ensureSets(local);
       return local;
     }
@@ -279,15 +320,20 @@
     if (bookOk(cloud)) {
       const localAt = bookOk(local) ? local.exportedAt || 0 : 0;
       const cloudAt = cloud.exportedAt || 0;
-      if (bookOk(local) && localAt > cloudAt) {
+      const localN = bookOk(local) ? local.plays.length : 0;
+      const cloudN = cloud.plays.length;
+      if (!forceCloud && bookOk(local) && localAt > cloudAt && localN >= cloudN) {
         state.needCloudPush = true;
         ensureSets(local);
         return local;
       }
       ensureSets(cloud);
+      persistBook(cloud);
+      if (forceCloud || (bookOk(local) && local.plays.length !== cloud.plays.length)) {
+        state.cloudNote = "Loaded the site copy · " + cloud.plays.length + " plays";
+      }
       return cloud;
     }
-    if (bookOk(local)) state.needCloudPush = true;
     ensureSets(local);
     return local;
   }
@@ -3308,13 +3354,15 @@
 
   function exportJson() {
     commitPlayFields();
+    save();
+    flushCloud();
     const blob = new Blob([JSON.stringify(state.book, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "raiders-playbook.json";
     a.click();
     URL.revokeObjectURL(a.href);
-    toast("Saved plays, names, and game lists");
+    toast("Saved on this device and the site");
   }
 
   const CRC_TABLE = (function () {
@@ -4049,6 +4097,10 @@
     });
     window.addEventListener("offline", syncOfflineChip);
     if (state.needCloudPush) scheduleCloudSave();
+    if (state.cloudNote) toast(state.cloudNote);
+    window.addEventListener("pagehide", function () {
+      flushCloud();
+    });
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
