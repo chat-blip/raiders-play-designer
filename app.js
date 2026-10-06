@@ -634,7 +634,7 @@
   function trackSpeed(type) {
     if (type === "block") return 85;
     if (type === "motion") return 105;
-    if (type === "ball") return 130;
+    if (type === "ball") return 88;
     return 120;
   }
 
