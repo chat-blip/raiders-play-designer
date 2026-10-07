@@ -765,28 +765,74 @@
     return { x: pl.x, y: pl.y };
   }
 
-  function lastBallTip(playObj) {
-    const bag = (playObj.assignments || []).filter(function (a) {
-      return a.type === "ball" && a.points && a.points.length;
+  function ballAssigns(playObj) {
+    return (playObj.assignments || []).filter(function (a) {
+      return a.type === "ball" && a.points && a.points.length >= 2;
     });
-    return bag.length ? assignEnd(bag[bag.length - 1]) : null;
   }
 
-  function animBallTracks() {
-    if (!state.anim || !state.anim.tracks) return [];
-    const out = [];
-    Object.keys(state.anim.tracks).forEach(function (id) {
-      (state.anim.tracks[id].play || []).forEach(function (tr) {
-        if (tr.type === "ball") out.push(tr);
-      });
+  function ballStartPt(a, playObj) {
+    const pts = livePoints(a, playObj);
+    return (pts && pts[0]) || a.points[0];
+  }
+
+  function ballEndPt(a, playObj) {
+    const pts = livePoints(a, playObj);
+    return (pts && pts.length && pts[pts.length - 1]) || assignEnd(a);
+  }
+
+  function orderBallAssigns(playObj) {
+    const balls = ballAssigns(playObj);
+    if (balls.length <= 1) return balls.slice();
+    const ids = {};
+    balls.forEach(function (a) { ids[a.id] = true; });
+    const unused = balls.slice();
+    const chain = [];
+    function isRoot(a) {
+      return !a.afterId || !ids[a.afterId];
+    }
+    const roots = unused.filter(isRoot);
+    const pool = roots.length ? roots : unused;
+    pool.sort(function (a, b) {
+      const pa = ballStartPt(a, playObj);
+      const pb = ballStartPt(b, playObj);
+      if (Math.abs((pb.y || 0) - (pa.y || 0)) > 8) return (pb.y || 0) - (pa.y || 0);
+      return (playObj.assignments || []).indexOf(a) - (playObj.assignments || []).indexOf(b);
     });
-    return out;
+    let first = pool[0];
+    unused.splice(unused.indexOf(first), 1);
+    chain.push(first);
+    while (unused.length) {
+      const prev = chain[chain.length - 1];
+      const tip = ballEndPt(prev, playObj);
+      let next = unused.find(function (a) { return a.afterId === prev.id; });
+      if (!next) {
+        unused.sort(function (a, b) {
+          return dist(ballStartPt(a, playObj), tip) - dist(ballStartPt(b, playObj), tip);
+        });
+        next = unused[0];
+      }
+      unused.splice(unused.indexOf(next), 1);
+      chain.push(next);
+    }
+    return chain;
+  }
+
+  function lastBallTip(playObj) {
+    const chain = orderBallAssigns(playObj);
+    return chain.length ? ballEndPt(chain[chain.length - 1], playObj) : null;
+  }
+
+  function buildFootballTracks(playObj) {
+    return orderBallAssigns(playObj).map(function (a) {
+      return makeTrack(a, playObj);
+    }).filter(Boolean);
   }
 
   function footballDrawPos(p, live) {
     if (!p || !p.football) return null;
     if (live && state.anim) {
-      const tracks = animBallTracks();
+      const tracks = state.anim.ballTracks || [];
       if (tracks.length) {
         if (state.anim.phase === "motion") {
           const pt = tracks[0].el.getPointAtLength(0);
@@ -921,12 +967,14 @@
     stopAnim(true);
     const p = play();
     const tracks = buildAnimTracks(p);
+    const ballTracks = buildFootballTracks(p);
     let maxMotion = 0;
     let maxPlay = 0;
     Object.keys(tracks).forEach(function (id) {
       maxMotion = Math.max(maxMotion, tracksMs(tracks[id].motion));
       maxPlay = Math.max(maxPlay, tracksMs(tracks[id].play));
     });
+    maxPlay = Math.max(maxPlay, tracksMs(ballTracks));
     if (!Object.keys(tracks).length) {
       toast("Draw a motion, route, block, or ball path first");
       return;
@@ -943,6 +991,7 @@
       playDur: playDur,
       hasPlay: playDur > 0,
       tracks: tracks,
+      ballTracks: ballTracks,
       pos: {},
       raf: 0,
     };
@@ -1910,7 +1959,7 @@
       block: "Tap the player. After motion or a ball path, the T-bar starts at that arrow — then tap where he blocks. Hold Alt to start from the circle.",
       motion: "Tap a player, then tap where he motions. After a ball path (or any line), motion starts at that arrow. Enter to finish. Hold Alt to start from the circle.",
       ball: "After a route or motion, tap the player (or the field). The ball starts at that arrow, not the circle. Then tap the path and Enter.",
-      football: "Tap where the ball goes — only this play shows it. Tap a player or the end of a ball path to snap it. Drag to move. Delete to hide it.",
+      football: "Tap the field to drop the ball on this play only. Play follows every blue ball path, in order — QB to B to A, and so on.",
       paintRed: "Click a player to mark the ball carrier (red).",
       paintGold: "Click receivers to mark them gold. Click again to clear. You can mark more than one.",
       addOff: "Click the field to add an offensive player.",
