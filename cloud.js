@@ -43,8 +43,8 @@
 
   function otherShell() {
     var p = location.pathname || "";
-    if (/both\.html$/i.test(p)) return "cut.html";
-    return "both.html";
+    if (/see\.html$/i.test(p)) return "both.html";
+    return "see.html";
   }
 
   function isOffline() {
@@ -229,6 +229,7 @@
     const repo = (c && c.repo) || "raiders-play-designer";
     const urls = [
       "https://raw.githubusercontent.com/" + owner + "/" + repo + "/main/" + path + "?t=" + Date.now(),
+      "https://cdn.jsdelivr.net/gh/" + owner + "/" + repo + "@main/" + path + "?t=" + Date.now(),
       "playbook.json?t=" + Date.now(),
     ];
     for (let i = 0; i < urls.length; i++) {
@@ -286,7 +287,7 @@
         headers: headers,
         body: JSON.stringify(payload),
         keepalive: true,
-      }, 8000);
+      }, 30000);
       if (r.status === 409 || r.status === 422) {
         const latest = await fetchOk(api + "/repos/" + c.owner + "/" + c.repo + "/contents/" + c.path, {
           headers: { Accept: "application/vnd.github+json", Authorization: "Bearer " + c.token },
@@ -311,7 +312,7 @@
             headers: headers,
             body: JSON.stringify(payload),
             keepalive: true,
-          }, 8000);
+          }, 30000);
         }
       }
       if (!r.ok) return { ok: false, reason: "http-" + r.status };
