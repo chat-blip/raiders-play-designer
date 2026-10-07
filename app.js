@@ -673,7 +673,7 @@
     el.setAttribute("d", pathD(pts, useSmooth(a)));
     measurePathEl().appendChild(el);
     const len = el.getTotalLength();
-    if (!(len > 2)) return null;
+    if (!(len > 0.5)) return null;
     return { el: el, len: len, type: a.type, speed: trackSpeed(a.type), from: a.from, id: a.id };
   }
 
@@ -788,23 +788,33 @@
     });
   }
 
+  function assignPolyLen(a, playObj) {
+    const pts = livePoints(a, playObj) || a.points || [];
+    let n = 0;
+    for (let i = 1; i < pts.length; i++) n += dist(pts[i - 1], pts[i]);
+    return n;
+  }
+
   function ballHands(playObj, tracksBag) {
     const hands = [];
-    Object.keys(tracksBag || {}).forEach(function (id) {
+    (playObj.players || []).forEach(function (pl) {
       let t = 0;
-      (tracksBag[id].play || []).forEach(function (tr) {
-        const ms = (tr.len / Math.max(tr.speed, 1)) * 1000;
-        if (tr.type === "ball") {
-          hands.push({ from: id, start: t, dur: ms, id: tr.id });
+      (playObj.assignments || []).forEach(function (a) {
+        if (a.from !== pl.id || a.type === "motion") return;
+        const bag = tracksBag && tracksBag[pl.id];
+        const tr = bag && (bag.play || []).find(function (x) { return x.id === a.id; });
+        const len = tr && tr.len > 0.5 ? tr.len : assignPolyLen(a, playObj);
+        const ms = (len / Math.max(trackSpeed(a.type), 1)) * 1000;
+        if (a.type === "ball" && (a.points || []).length >= 2) {
+          hands.push({ from: pl.id, start: t, dur: Math.max(ms, 320), id: a.id });
         }
-        t += ms;
+        t += Math.max(ms, 40);
       });
     });
     hands.sort(function (a, b) {
       if (a.start !== b.start) return a.start - b.start;
-      const ia = (playObj.assignments || []).findIndex(function (x) { return x.id === a.id; });
-      const ib = (playObj.assignments || []).findIndex(function (x) { return x.id === b.id; });
-      return ia - ib;
+      return (playObj.assignments || []).findIndex(function (x) { return x.id === a.id; }) -
+        (playObj.assignments || []).findIndex(function (x) { return x.id === b.id; });
     });
     return hands;
   }
