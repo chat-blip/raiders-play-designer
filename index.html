@@ -742,6 +742,10 @@
     .handle.active { fill: #1e88e5; }
     .handle.mid { fill: #fff; stroke: #1e88e5; stroke-width: 2; stroke-dasharray: 3 2; }
     .motion-spot { fill: #fff; stroke: #111; stroke-width: 2; stroke-dasharray: 4 3; }
+    .football { pointer-events: none; }
+    .football .pigskin { fill: #8d4b1a; stroke: #3e2723; stroke-width: 1.2; }
+    .football .lace { stroke: #fff8e7; stroke-width: 1.15; stroke-linecap: round; }
+    .football.sel .pigskin { stroke: #1e88e5; stroke-width: 2.2; }
     .field-marks { pointer-events: none; }
     .los { stroke: #2e7d32; stroke-width: 2.6; }
     .yard5 { stroke: #6fbf73; stroke-width: 0.8; opacity: 0.35; }
@@ -995,6 +999,7 @@
           <button type="button" data-tool="ball">Ball path (Q)</button>
           <button type="button" id="btnEnter">Enter (finish)</button>
           <button type="button" id="btnDelete">Delete selected</button>
+          <button type="button" data-tool="football" title="Optional. Drop a football on this play so kids can see where the ball goes.">Football</button>
           <button type="button" data-tool="paintRed">Ball carrier</button>
           <button type="button" data-tool="paintGold">Pass player</button>
           <button type="button" data-tool="addOff">+ Offense</button>
@@ -1015,6 +1020,7 @@
           <b>Tap Enter</b> on the field (or the Enter key) to finish a ball path, motion, or route.<br />
           <b>Double-click</b> a circle to put initials under the position.<br />
           <b>Formations</b> lets you tap I Right, move X and Z, and Save changes. New plays pick it up. Plays you already drew stay put.<br />
+          <b>Football</b> is optional — tap it, then tap where the ball goes. Only that play shows it. Play moves it along a ball path.<br />
           <b>Play</b> moves the circles — motion first, then each player on his own line. Pause in the middle. When it finishes, tap <b>Reset</b> to put them back on their spots, then Play again.<br />
           <b>↑ ↓</b> next play · <b>Ctrl+Z</b> undo · <b>C</b> curve · <b>F</b> flip · <b>Full screen</b> for the kids · saves to this site.
         </p>
@@ -1097,10 +1103,10 @@
   </div>
   <div id="toast"></div>
   <div id="offlineChip" hidden>Offline — saved on this device</div>
-  <script src="plays.js?v=cloud61"></script>
-  <script src="playbook-data.js?v=cloud61"></script>
-  <script src="cloud-config.js?v=cloud61"></script>
-  <script src="cloud.js?v=cloud61"></script>
-  <script src="app.js?v=cloud61"></script>
+  <script src="plays.js?v=cloud62"></script>
+  <script src="playbook-data.js?v=cloud62"></script>
+  <script src="cloud-config.js?v=cloud62"></script>
+  <script src="cloud.js?v=cloud62"></script>
+  <script src="app.js?v=cloud62"></script>
 </body>
 </html>

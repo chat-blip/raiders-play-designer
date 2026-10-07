@@ -606,6 +606,7 @@
         pt.x = 2 * CX - pt.x;
       });
     });
+    if (copy.football) copy.football.x = 2 * CX - copy.football.x;
     return copy;
   }
 

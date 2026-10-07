@@ -756,12 +756,100 @@
         pos[id] = bag.start;
       }
     });
+    state.anim.elapsed = elapsed;
     state.anim.pos = pos;
   }
 
   function playerDrawPos(pl, live) {
     if (live && state.anim && state.anim.pos && state.anim.pos[pl.id]) return state.anim.pos[pl.id];
     return { x: pl.x, y: pl.y };
+  }
+
+  function lastBallTip(playObj) {
+    const bag = (playObj.assignments || []).filter(function (a) {
+      return a.type === "ball" && a.points && a.points.length;
+    });
+    return bag.length ? assignEnd(bag[bag.length - 1]) : null;
+  }
+
+  function animBallTracks() {
+    if (!state.anim || !state.anim.tracks) return [];
+    const out = [];
+    Object.keys(state.anim.tracks).forEach(function (id) {
+      (state.anim.tracks[id].play || []).forEach(function (tr) {
+        if (tr.type === "ball") out.push(tr);
+      });
+    });
+    return out;
+  }
+
+  function footballDrawPos(p, live) {
+    if (!p || !p.football) return null;
+    if (live && state.anim) {
+      const tracks = animBallTracks();
+      if (tracks.length) {
+        if (state.anim.phase === "motion") {
+          const pt = tracks[0].el.getPointAtLength(0);
+          return { x: pt.x, y: pt.y };
+        }
+        const elapsed = state.anim.phase === "done" ? 1e9 : (state.anim.elapsed || 0);
+        return pointAlongTracksMs(tracks, elapsed) || p.football;
+      }
+    }
+    return { x: p.football.x, y: p.football.y };
+  }
+
+  function hitFootball(pt, p) {
+    if (!p || !p.football) return false;
+    return dist(pt, p.football) <= 18;
+  }
+
+  function placeFootball(p, pt, pl) {
+    if (pl) {
+      const tip = assignTip(p, pl.id, "ball");
+      if (tip) {
+        p.football = { x: tip.x, y: tip.y };
+        return;
+      }
+      p.football = { x: pl.x, y: pl.y };
+      return;
+    }
+    const tip = lastBallTip(p);
+    if (tip && dist(pt, tip) <= 28) {
+      p.football = { x: tip.x, y: tip.y };
+      return;
+    }
+    p.football = { x: pt.x, y: pt.y };
+  }
+
+  function paintFootball(g, pos, selected) {
+    if (!pos) return;
+    const NS = "http://www.w3.org/2000/svg";
+    const wrap = document.createElementNS(NS, "g");
+    wrap.setAttribute("class", "football" + (selected ? " sel" : ""));
+    wrap.setAttribute("transform", "translate(" + pos.x + " " + pos.y + ") rotate(-28)");
+    const body = document.createElementNS(NS, "ellipse");
+    body.setAttribute("rx", "11");
+    body.setAttribute("ry", "7");
+    body.setAttribute("class", "pigskin");
+    wrap.appendChild(body);
+    const lace = document.createElementNS(NS, "line");
+    lace.setAttribute("x1", "-5");
+    lace.setAttribute("y1", "0");
+    lace.setAttribute("x2", "5");
+    lace.setAttribute("y2", "0");
+    lace.setAttribute("class", "lace");
+    wrap.appendChild(lace);
+    [-3, 0, 3].forEach(function (x) {
+      const tick = document.createElementNS(NS, "line");
+      tick.setAttribute("x1", String(x));
+      tick.setAttribute("y1", "-2.2");
+      tick.setAttribute("x2", String(x));
+      tick.setAttribute("y2", "2.2");
+      tick.setAttribute("class", "lace");
+      wrap.appendChild(tick);
+    });
+    g.appendChild(wrap);
   }
 
   function animButtonLabel() {
@@ -1822,6 +1910,7 @@
       block: "Tap the player. After motion or a ball path, the T-bar starts at that arrow — then tap where he blocks. Hold Alt to start from the circle.",
       motion: "Tap a player, then tap where he motions. After a ball path (or any line), motion starts at that arrow. Enter to finish. Hold Alt to start from the circle.",
       ball: "After a route or motion, tap the player (or the field). The ball starts at that arrow, not the circle. Then tap the path and Enter.",
+      football: "Tap where the ball goes — only this play shows it. Tap a player or the end of a ball path to snap it. Drag to move. Delete to hide it.",
       paintRed: "Click a player to mark the ball carrier (red).",
       paintGold: "Click receivers to mark them gold. Click again to clear. You can mark more than one.",
       addOff: "Click the field to add an offensive player.",
@@ -1981,6 +2070,11 @@
       g.appendChild(wrap);
     });
 
+    const ballPos = footballDrawPos(p, live);
+    if (ballPos) {
+      paintFootball(g, ballPos, !!(interactive && state.selected && state.selected.kind === "football"));
+    }
+
     if (interactive && state.selected && state.selected.kind === "assign") {
       const a = assigns.find((x) => x.id === state.selected.id);
       if (a) {
@@ -2064,6 +2158,14 @@
       btnDel.textContent = pl ? "Remove " + (pl.label || "player") : "Remove player";
       return;
     }
+    if (state.selected && state.selected.kind === "football") {
+      bar.classList.add("show");
+      btnDone.hidden = true;
+      btnCancel.hidden = true;
+      btnDel.hidden = false;
+      btnDel.textContent = "Remove football";
+      return;
+    }
     bar.classList.remove("show");
   }
 
@@ -2088,6 +2190,7 @@
         add(pt.x, pt.y);
       });
     });
+    if (p.football) add(p.football.x, p.football.y);
     if (!isFinite(minX)) return { minX: 0, minY: 0, maxX: VW, maxY: VH };
     const pad = 48;
     return {
@@ -2383,6 +2486,25 @@
       return;
     }
 
+    if (state.tool === "football") {
+      pushUndo();
+      placeFootball(p, pt, plEarly || hitPlayer(pt, p.players));
+      state.selected = { kind: "football" };
+      state.drag = { kind: "football", last: pt };
+      try { $("field").setPointerCapture(evt.pointerId); } catch (err) {}
+      render();
+      return;
+    }
+
+    if (hitFootball(pt, p)) {
+      state.selected = { kind: "football" };
+      pushUndo();
+      state.drag = { kind: "football", last: pt };
+      try { $("field").setPointerCapture(evt.pointerId); } catch (err) {}
+      renderField();
+      return;
+    }
+
     if (state.tool === "paintRed" || state.tool === "paintGold") {
       if (!pl || pl.side !== "off") return;
       pushUndo();
@@ -2447,6 +2569,12 @@
           });
         }
       });
+      state.drag.last = pt;
+      renderField();
+    } else if (state.drag.kind === "football") {
+      if (!p.football) return;
+      p.football.x += pt.x - state.drag.last.x;
+      p.football.y += pt.y - state.drag.last.y;
       state.drag.last = pt;
       renderField();
     } else if (state.drag.kind === "handle") {
@@ -2520,6 +2648,8 @@
       const id = state.selected.id;
       p.players = p.players.filter((x) => x.id !== id);
       p.assignments = p.assignments.filter((a) => a.from !== id);
+    } else if (state.selected.kind === "football") {
+      delete p.football;
     }
     state.selected = null;
     render();
