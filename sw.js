@@ -1,5 +1,5 @@
 /* Cache the designer so a dead Wi-Fi link cannot freeze or blank the page. */
-const CACHE = "raiders-offline-v39";
+const CACHE = "raiders-offline-v40";
 const SHELL = [
   "./",
   "./index.html",
@@ -36,6 +36,7 @@ const SHELL = [
   "./cut.html",
   "./both.html",
   "./see.html",
+  "./keep.html",
   "./app.js",
   "./plays.js",
   "./cloud.js",

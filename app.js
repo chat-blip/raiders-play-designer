@@ -1,6 +1,7 @@
 /* Raiders play designer — drag players, draw assignments, save locally */
 (function () {
   const STORE = "raiders-playbook-v1";
+  const BACKUP = "raiders-playbook-backup";
   const CLOUD_AT = "raiders-cloud-at";
   const UI_STORE = "raiders-ui-v1";
   const SIDE_MIN = 80;
@@ -216,9 +217,24 @@
     state.dirtyTimer = setTimeout(save, 180);
   }
 
-  function persistBook(book) {
+  function keepBackup(candidate) {
+    if (!bookOk(candidate)) return;
+    const cur = readBackupBook();
+    if (cur && bookRicher(cur, candidate)) return;
     try {
-      localStorage.setItem(STORE, JSON.stringify(book || state.book));
+      localStorage.setItem(BACKUP, JSON.stringify(candidate));
+    } catch (e) {}
+  }
+
+  function persistBook(book, opts) {
+    const next = book || state.book;
+    try {
+      const prev = readStoredBook();
+      if (prev && bookRicher(prev, next) && !(opts && opts.allowDowngrade)) {
+        return false;
+      }
+      keepBackup(prev);
+      localStorage.setItem(STORE, JSON.stringify(next));
       return true;
     } catch (e) {
       return false;
@@ -260,6 +276,8 @@
 
   function adoptCloudBook(book) {
     if (!bookOk(book)) return false;
+    const prev = state.book || readStoredBook();
+    if (prev && bookRicher(prev, book)) return false;
     state.book = book;
     ensureSets(state.book);
     if (!state.book.plays.some(function (p) { return p.id === state.playId; })) {
@@ -271,6 +289,7 @@
 
   function applyPushResult(res) {
     if (res && res.book && bookOk(res.book)) {
+      if (state.book && bookRicher(state.book, res.book)) return "";
       const theirs = (res.book.exportedAt || 0) >= ((state.book && state.book.exportedAt) || 0);
       if (theirs && adoptCloudBook(res.book)) {
         rememberCloudAt(res.book.exportedAt || 0);
@@ -309,26 +328,65 @@
   async function flushCloud() {
     clearTimeout(state.dirtyTimer);
     clearTimeout(state.cloudTimer);
-    if (!state.book) return;
+    if (!state.book) return { ok: false, reason: "empty" };
     if (!persistBook(state.book)) toast("Could not save locally");
     if (navigator.onLine === false) {
       setSyncStatus("offline");
-      return;
+      return { ok: false, reason: "offline" };
     }
-    if (!window.RaidersCloud || !window.RaidersCloud.canPush()) return;
+    if (!window.RaidersCloud || !window.RaidersCloud.canPush()) return { ok: false, reason: "offline" };
     setSyncStatus("pending");
     const res = await window.RaidersCloud.push(state.book);
-    if (applyPushResult(res)) return;
+    if (applyPushResult(res)) return { ok: true };
     setSyncStatus("miss");
     if (res && !res.ok && res.reason !== "offline" && res.reason !== "network") {
       toast("Not on the site yet — will keep trying");
     }
+    return { ok: false, reason: (res && res.reason) || "miss" };
   }
 
   window.RaidersFlushCloud = flushCloud;
 
   function bookOk(b) {
     return !!(b && Array.isArray(b.plays) && b.plays.length);
+  }
+
+  function footballCount(book) {
+    let n = 0;
+    ((book && book.plays) || []).forEach(function (p) {
+      if (p && p.football) n += 1;
+    });
+    return n;
+  }
+
+  function bookRicher(a, b) {
+    if (!bookOk(a)) return false;
+    if (!bookOk(b)) return true;
+    if (footballCount(a) > footballCount(b)) return true;
+    if (a.plays.length > b.plays.length) return true;
+    if ((a.exportedAt || 0) > (b.exportedAt || 0) && a.plays.length >= b.plays.length) return true;
+    return false;
+  }
+
+  function readBackupBook() {
+    try {
+      const raw = localStorage.getItem(BACKUP);
+      if (!raw) return null;
+      const book = JSON.parse(raw);
+      return bookOk(book) ? book : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function recoverStoredBook() {
+    const stored = readStoredBook();
+    const backup = readBackupBook();
+    if (backup && bookRicher(backup, stored)) {
+      persistBook(backup, { allowDowngrade: true });
+      return backup;
+    }
+    return stored;
   }
 
   function readStoredBook() {
@@ -371,7 +429,7 @@
       forceCloud = sessionStorage.getItem("raiders-prefer-cloud") === "1";
       sessionStorage.removeItem("raiders-prefer-cloud");
     } catch (e) {}
-    const stored = readStoredBook();
+    const stored = recoverStoredBook();
     const syncedAt = lastCloudAt();
     if (navigator.onLine === false) {
       const local = stored || loadFallback();
@@ -383,10 +441,9 @@
     if (bookOk(cloud)) {
       const cloudAt = cloud.exportedAt || 0;
       const storedAt = stored ? stored.exportedAt || 0 : 0;
-      const unsynced = !!(stored && syncedAt && storedAt > syncedAt);
-      if (!forceCloud && unsynced) {
+      if (stored && bookRicher(stored, cloud)) {
         state.needCloudPush = true;
-        state.cloudNote = "This device has newer plays — sending them to the site";
+        state.cloudNote = "Kept the footballs and plays on this device — sending them to the site";
         ensureSets(stored);
         setSyncStatus("pending");
         return stored;

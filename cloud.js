@@ -43,8 +43,8 @@
 
   function otherShell() {
     var p = location.pathname || "";
-    if (/see\.html$/i.test(p)) return "both.html";
-    return "see.html";
+    if (/keep\.html$/i.test(p)) return "see.html";
+    return "keep.html";
   }
 
   function isOffline() {
@@ -86,27 +86,29 @@
 
   function reloadFresh() {
     if (isOffline()) return;
-    try {
-      sessionStorage.setItem("raiders-prefer-cloud", "1");
-    } catch (e) {}
-    const go = function () {
+    const go = function (preferCloud) {
+      try {
+        if (preferCloud) sessionStorage.setItem("raiders-prefer-cloud", "1");
+        else sessionStorage.removeItem("raiders-prefer-cloud");
+      } catch (e) {}
       location.replace(appDir() + otherShell() + "?t=" + Date.now());
     };
-    const afterFlush = function () {
+    const afterFlush = function (res) {
+      const saved = !!(res && res.ok);
       if (!("serviceWorker" in navigator)) {
-        go();
+        go(saved);
         return;
       }
       navigator.serviceWorker.getRegistrations().then(function (regs) {
         return Promise.all(regs.map(function (reg) { return reg.unregister(); }));
-      }).then(go, go);
+      }).then(function () { go(saved); }, function () { go(saved); });
     };
     const flush = window.RaidersFlushCloud;
     if (typeof flush === "function") {
-      Promise.resolve(flush()).then(afterFlush, afterFlush);
+      Promise.resolve(flush()).then(afterFlush, function () { afterFlush({ ok: false }); });
       return;
     }
-    afterFlush();
+    afterFlush({ ok: false });
   }
 
   function checkBuild() {
@@ -136,7 +138,10 @@
       try {
         localStorage.removeItem(UNLOCK);
       } catch (e) {}
-      reloadFresh();
+      try {
+        sessionStorage.removeItem("raiders-prefer-cloud");
+      } catch (e) {}
+      location.replace(location.pathname + "?t=" + Date.now());
     };
     const flush = window.RaidersFlushCloud;
     if (typeof flush === "function") {
