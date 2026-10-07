@@ -833,13 +833,23 @@
     return chain.length ? ballEndPt(chain[chain.length - 1], playObj) : null;
   }
 
+  function findPlayer(p, id) {
+    return (p.players || []).find(function (x) { return x.id === id || x.label === id; });
+  }
+
   function footballDrawPos(p, live) {
     if (!p || !p.football) return null;
-    if (live && state.anim && state.anim.ballHands && state.anim.ballHands.length) {
-      const elapsed = state.anim.phase === "motion" ? -1 : state.anim.phase === "done" ? 1e9 : (state.anim.elapsed || 0);
-      const hand = elapsed < 0 ? state.anim.ballHands[0] : footballHolder(state.anim.ballHands, elapsed);
-      const pl = hand && (p.players || []).find(function (x) { return x.id === hand.from; });
-      if (pl) return playerDrawPos(pl, true);
+    if (live && state.anim) {
+      if (state.anim.phase === "motion") {
+        const c = findPlayer(p, "C");
+        return c ? { x: c.x, y: c.y } : { x: p.football.x, y: p.football.y };
+      }
+      if (state.anim.ballHands && state.anim.ballHands.length) {
+        const elapsed = state.anim.phase === "done" ? 1e9 : (state.anim.elapsed || 0);
+        const hand = footballHolder(state.anim.ballHands, elapsed);
+        const pl = hand && findPlayer(p, hand.from);
+        if (pl) return playerDrawPos(pl, true);
+      }
     }
     return { x: p.football.x, y: p.football.y };
   }
@@ -1962,7 +1972,7 @@
       block: "Tap the player. After motion or a ball path, the T-bar starts at that arrow — then tap where he blocks. Hold Alt to start from the circle.",
       motion: "Tap a player, then tap where he motions. After a ball path (or any line), motion starts at that arrow. Enter to finish. Hold Alt to start from the circle.",
       ball: "After a route or motion, tap the player (or the field). The ball starts at that arrow, not the circle. Then tap the path and Enter.",
-      football: "Tap the field to show the ball on this play. Play is QB, then A, then B — always on that player's circle.",
+      football: "Tap the field to show the ball on this play. During motion it stays on the center. After motion: QB, then A, then B.",
       paintRed: "Click a player to mark the ball carrier (red).",
       paintGold: "Click receivers to mark them gold. Click again to clear. You can mark more than one.",
       addOff: "Click the field to add an offensive player.",
