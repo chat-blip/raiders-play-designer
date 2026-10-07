@@ -43,8 +43,8 @@
 
   function otherShell() {
     var p = location.pathname || "";
-    if (/auto\.html$/i.test(p)) return "keep.html";
-    return "auto.html";
+    if (/got\.html$/i.test(p)) return "auto.html";
+    return "got.html";
   }
 
   function isOffline() {
@@ -239,6 +239,16 @@
     return (meta && meta.sha) || null;
   }
 
+  function parseBook(b64) {
+    if (!b64) return null;
+    try {
+      const book = JSON.parse(decodeB64(b64));
+      return book && Array.isArray(book.plays) ? book : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   async function pullFromApi() {
     const c = cfg();
     if (!c || !c.owner || !c.repo || !c.path) return null;
@@ -246,10 +256,30 @@
     if (!r.ok) return null;
     const meta = await r.json();
     if (meta && meta.sha) window.RaidersCloud.sha = meta.sha;
-    if (!meta || !meta.content) return null;
-    const book = JSON.parse(decodeB64(meta.content));
-    if (!book || !Array.isArray(book.plays)) return null;
-    return book;
+    let book = parseBook(meta && meta.content);
+    if (book) return book;
+    const raw = await fetchOk(contentsUrl(), {
+      headers: authHeaders({ Accept: "application/vnd.github.raw" }),
+      cache: "no-store",
+    }, 25000);
+    if (raw.ok) {
+      try {
+        book = await raw.json();
+        if (book && Array.isArray(book.plays)) return book;
+      } catch (e) {}
+    }
+    if (meta && meta.sha) {
+      const blob = await fetchOk(api + "/repos/" + c.owner + "/" + c.repo + "/git/blobs/" + meta.sha, {
+        headers: authHeaders(),
+        cache: "no-store",
+      }, 25000);
+      if (blob.ok) {
+        const pack = await blob.json();
+        book = parseBook(pack && pack.content);
+        if (book) return book;
+      }
+    }
+    return null;
   }
 
   async function pullFromRaw() {
@@ -259,7 +289,6 @@
     const repo = (c && c.repo) || "raiders-play-designer";
     const urls = [
       "https://raw.githubusercontent.com/" + owner + "/" + repo + "/main/" + path + "?t=" + Date.now(),
-      "https://cdn.jsdelivr.net/gh/" + owner + "/" + repo + "@main/" + path + "?t=" + Date.now(),
       "playbook.json?t=" + Date.now(),
     ];
     for (let i = 0; i < urls.length; i++) {
@@ -281,7 +310,7 @@
           if (fromApi) return fromApi;
         } catch (e) {}
         return await pullFromRaw();
-      })(), 25000);
+      })(), 45000);
     } catch (e) {
       return null;
     }

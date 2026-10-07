@@ -366,10 +366,11 @@
   function bookRicher(a, b) {
     if (!bookOk(a)) return false;
     if (!bookOk(b)) return true;
-    if (footballCount(a) > footballCount(b)) return true;
-    if (a.plays.length > b.plays.length) return true;
-    if ((a.exportedAt || 0) > (b.exportedAt || 0) && a.plays.length >= b.plays.length) return true;
-    return false;
+    const aB = footballCount(a);
+    const bB = footballCount(b);
+    if (aB !== bB) return aB > bB;
+    if (a.plays.length !== b.plays.length) return a.plays.length > b.plays.length;
+    return (a.exportedAt || 0) > (b.exportedAt || 0);
   }
 
   function readBackupBook() {
