@@ -821,12 +821,12 @@
 
   function footballHolder(hands, elapsed) {
     if (!hands || !hands.length) return null;
-    let t = 0;
+    let hold = hands[0];
     for (let i = 0; i < hands.length; i++) {
-      t += hands[i].dur;
-      if (elapsed < t) return hands[i];
+      if (hands[i].start <= elapsed) hold = hands[i];
+      else break;
     }
-    return hands[hands.length - 1];
+    return hold;
   }
 
   function lastBallTip(playObj) {
