@@ -43,8 +43,8 @@
 
   function otherShell() {
     var p = location.pathname || "";
-    if (/keep\.html$/i.test(p)) return "see.html";
-    return "keep.html";
+    if (/auto\.html$/i.test(p)) return "keep.html";
+    return "auto.html";
   }
 
   function isOffline() {
@@ -209,19 +209,44 @@
     }
   }
 
-  async function pullFromApi() {
+  function contentsUrl() {
     const c = cfg();
-    if (!c || !c.owner || !c.repo || !c.path) return null;
+    return api + "/repos/" + c.owner + "/" + c.repo + "/contents/" + c.path;
+  }
+
+  function authHeaders(extra) {
+    const c = cfg();
     const headers = { Accept: "application/vnd.github+json" };
-    if (c.token) headers.Authorization = "Bearer " + c.token;
-    const r = await fetchOk(
-      api + "/repos/" + c.owner + "/" + c.repo + "/contents/" + c.path,
-      { headers: headers, cache: "no-store" },
-      8000
-    );
+    if (c && c.token) headers.Authorization = "Bearer " + c.token;
+    return Object.assign(headers, extra || {});
+  }
+
+  function toB64(text) {
+    const bytes = new TextEncoder().encode(text);
+    let bin = "";
+    const step = 0x8000;
+    for (let i = 0; i < bytes.length; i += step) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + step));
+    }
+    return btoa(bin);
+  }
+
+  async function latestSha() {
+    const r = await fetchOk(contentsUrl(), { headers: authHeaders(), cache: "no-store" }, 15000);
     if (!r.ok) return null;
     const meta = await r.json();
     if (meta && meta.sha) window.RaidersCloud.sha = meta.sha;
+    return (meta && meta.sha) || null;
+  }
+
+  async function pullFromApi() {
+    const c = cfg();
+    if (!c || !c.owner || !c.repo || !c.path) return null;
+    const r = await fetchOk(contentsUrl(), { headers: authHeaders(), cache: "no-store" }, 15000);
+    if (!r.ok) return null;
+    const meta = await r.json();
+    if (meta && meta.sha) window.RaidersCloud.sha = meta.sha;
+    if (!meta || !meta.content) return null;
     const book = JSON.parse(decodeB64(meta.content));
     if (!book || !Array.isArray(book.plays)) return null;
     return book;
@@ -256,7 +281,7 @@
           if (fromApi) return fromApi;
         } catch (e) {}
         return await pullFromRaw();
-      })(), 12000);
+      })(), 25000);
     } catch (e) {
       return null;
     }
@@ -275,54 +300,40 @@
     const c = cfg();
     if (!canPush() || !book) return { ok: false, reason: "offline" };
     const body = JSON.stringify(book);
-    const content = btoa(unescape(encodeURIComponent(body)));
-    const payload = {
-      message: "Update playbook",
-      content: content,
-      sha: window.RaidersCloud.sha || undefined,
-    };
+    let content = "";
     try {
-      const headers = {
-        Accept: "application/vnd.github+json",
-        Authorization: "Bearer " + c.token,
-        "Content-Type": "application/json",
+      content = toB64(body);
+    } catch (e) {
+      return { ok: false, reason: "encode" };
+    }
+    try {
+      const sha = window.RaidersCloud.sha || (await latestSha());
+      const payload = {
+        message: "Update playbook",
+        content: content,
+        sha: sha || undefined,
       };
-      let r = await fetchOk(api + "/repos/" + c.owner + "/" + c.repo + "/contents/" + c.path, {
+      const headers = authHeaders({ "Content-Type": "application/json" });
+      let r = await fetchOk(contentsUrl(), {
         method: "PUT",
         headers: headers,
         body: JSON.stringify(payload),
-        keepalive: true,
-      }, 30000);
+      }, 45000);
       if (r.status === 409 || r.status === 422) {
-        const latest = await fetchOk(api + "/repos/" + c.owner + "/" + c.repo + "/contents/" + c.path, {
-          headers: { Accept: "application/vnd.github+json", Authorization: "Bearer " + c.token },
-        }, 5000);
-        if (latest.ok) {
-          const meta = await latest.json();
-          window.RaidersCloud.sha = meta.sha;
-          let theirs = null;
-          try {
-            theirs = JSON.parse(decodeB64(meta.content));
-          } catch (e) {}
-          const ourAt = (book && book.exportedAt) || 0;
-          const theirAt = (theirs && theirs.exportedAt) || 0;
-          const ourN = book && Array.isArray(book.plays) ? book.plays.length : 0;
-          const theirN = theirs && Array.isArray(theirs.plays) ? theirs.plays.length : 0;
-          if (theirs && theirN && (theirAt > ourAt || (theirAt === ourAt && theirN > ourN))) {
-            return { ok: true, book: theirs };
-          }
-          payload.sha = meta.sha;
-          r = await fetchOk(api + "/repos/" + c.owner + "/" + c.repo + "/contents/" + c.path, {
+        const fresh = await latestSha();
+        if (fresh) {
+          payload.sha = fresh;
+          r = await fetchOk(contentsUrl(), {
             method: "PUT",
             headers: headers,
             body: JSON.stringify(payload),
-            keepalive: true,
-          }, 30000);
+          }, 45000);
         }
       }
       if (!r.ok) return { ok: false, reason: "http-" + r.status };
       const out = await r.json();
       if (out && out.content && out.content.sha) window.RaidersCloud.sha = out.content.sha;
+      else if (out && out.commit) await latestSha();
       return { ok: true };
     } catch (e) {
       return { ok: false, reason: "network" };

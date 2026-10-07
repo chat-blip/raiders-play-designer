@@ -44,6 +44,7 @@
     redo: [],
     dirtyTimer: null,
     cloudTimer: null,
+    cloudBusy: false,
     syncHideTimer: null,
     needCloudPush: false,
     syncStatus: "",
@@ -308,20 +309,23 @@
 
   function pushCloud(attempt) {
     const n = attempt || 0;
+    if (state.cloudBusy) return;
     if (navigator.onLine === false) {
       setSyncStatus("offline");
       return;
     }
     if (!window.RaidersCloud || !window.RaidersCloud.canPush()) return;
     setSyncStatus("pending");
+    state.cloudBusy = true;
     window.RaidersCloud.push(state.book).then(function (res) {
+      state.cloudBusy = false;
       if (applyPushResult(res)) return;
-      if (n < 4) {
-        state.cloudTimer = setTimeout(function () { pushCloud(n + 1); }, 900 * (n + 1));
-        return;
-      }
+      state.cloudTimer = setTimeout(function () { pushCloud(n + 1); }, Math.min(8000, 1200 * (n + 1)));
+      if (n >= 2) setSyncStatus("miss");
+    }, function () {
+      state.cloudBusy = false;
+      state.cloudTimer = setTimeout(function () { pushCloud(n + 1); }, 4000);
       setSyncStatus("miss");
-      toast("Not on the site yet — will keep trying");
     });
   }
 
@@ -487,7 +491,7 @@
     const labels = {
       offline: "Offline — saved here only",
       pending: "Saving to the site…",
-      miss: "Not on the site yet",
+      miss: "Not on the site yet — tap to retry",
       ok: when ? "On the site · " + when : "On the site",
     };
     if (!status || !labels[status]) {
@@ -4473,7 +4477,17 @@
     });
     window.addEventListener("offline", syncOfflineChip);
     if (state.needCloudPush) scheduleCloudSave();
+    else scheduleCloudSave();
     if (state.cloudNote) toast(state.cloudNote);
+    const chip = $("syncChip") || $("offlineChip");
+    if (chip && !chip.dataset.wired) {
+      chip.dataset.wired = "1";
+      chip.style.cursor = "pointer";
+      chip.addEventListener("click", function () {
+        setSyncStatus("pending");
+        flushCloud();
+      });
+    }
     const leave = function () { flushCloud(); };
     window.addEventListener("pagehide", leave);
     window.addEventListener("freeze", leave);
