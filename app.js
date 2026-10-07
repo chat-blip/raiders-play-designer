@@ -270,7 +270,15 @@
     }
   }
 
+  function hasUnsyncedEdits() {
+    if (state.needCloudPush) return true;
+    const storedAt = (state.book && state.book.exportedAt) || 0;
+    const synced = lastCloudAt();
+    return !!(synced && storedAt > synced);
+  }
+
   function scheduleCloudSave() {
+    if (!hasUnsyncedEdits()) return;
     clearTimeout(state.cloudTimer);
     state.cloudTimer = setTimeout(function () { pushCloud(0); }, 500);
   }
@@ -320,10 +328,18 @@
     window.RaidersCloud.push(state.book).then(function (res) {
       state.cloudBusy = false;
       if (applyPushResult(res)) return;
+      if (!hasUnsyncedEdits()) {
+        setSyncStatus("ok");
+        return;
+      }
       state.cloudTimer = setTimeout(function () { pushCloud(n + 1); }, Math.min(8000, 1200 * (n + 1)));
       if (n >= 2) setSyncStatus("miss");
     }, function () {
       state.cloudBusy = false;
+      if (!hasUnsyncedEdits()) {
+        setSyncStatus("ok");
+        return;
+      }
       state.cloudTimer = setTimeout(function () { pushCloud(n + 1); }, 4000);
       setSyncStatus("miss");
     });
@@ -497,7 +513,7 @@
     const labels = {
       offline: "Offline — saved here only",
       pending: "Saving to the site…",
-      miss: "Not on the site yet — tap to retry",
+      miss: "Could not save from this computer — tap to retry",
       ok: (function () {
         const n = footballCount(state.book);
         const bits = ["On the site"];
@@ -4489,22 +4505,27 @@
     });
     window.addEventListener("offline", syncOfflineChip);
     if (state.needCloudPush) scheduleCloudSave();
-    else scheduleCloudSave();
     if (state.cloudNote) toast(state.cloudNote);
     const chip = $("syncChip") || $("offlineChip");
     if (chip && !chip.dataset.wired) {
       chip.dataset.wired = "1";
       chip.style.cursor = "pointer";
       chip.addEventListener("click", function () {
+        if (!hasUnsyncedEdits()) {
+          setSyncStatus("ok");
+          return;
+        }
         setSyncStatus("pending");
         flushCloud();
       });
     }
-    const leave = function () { flushCloud(); };
+    const leave = function () {
+      if (hasUnsyncedEdits()) flushCloud();
+    };
     window.addEventListener("pagehide", leave);
     window.addEventListener("freeze", leave);
     document.addEventListener("visibilitychange", function () {
-      if (document.visibilityState === "hidden") flushCloud();
+      if (document.visibilityState === "hidden" && hasUnsyncedEdits()) flushCloud();
     });
   }
 

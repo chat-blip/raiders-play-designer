@@ -86,6 +86,7 @@ jobs:
           pathlib.Path("site/auto.html").write_text(text, encoding="utf-8")
           pathlib.Path("site/got.html").write_text(text, encoding="utf-8")
           pathlib.Path("site/all.html").write_text(text, encoding="utf-8")
+          pathlib.Path("site/view.html").write_text(text, encoding="utf-8")
           pathlib.Path("site/version.json").write_text(
               json.dumps({"build": "run" + stamp}) + "\n",
               encoding="utf-8",
