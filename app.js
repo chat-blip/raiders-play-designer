@@ -442,7 +442,11 @@
       setSyncStatus("offline");
       return local;
     }
+    const extras = window.RaidersCloud && window.RaidersCloud.pullExtras ? await window.RaidersCloud.pullExtras() : null;
     const cloud = window.RaidersCloud ? await window.RaidersCloud.pull() : null;
+    if (stored && extras && window.RaidersCloud.applyExtras) {
+      window.RaidersCloud.applyExtras(stored, extras);
+    }
     if (bookOk(cloud)) {
       const cloudAt = cloud.exportedAt || 0;
       const storedAt = stored ? stored.exportedAt || 0 : 0;
@@ -463,6 +467,7 @@
       return cloud;
     }
     const local = stored || loadFallback();
+    if (extras && window.RaidersCloud.applyExtras) window.RaidersCloud.applyExtras(local, extras);
     ensureSets(local);
     if (stored && syncedAt && (stored.exportedAt || 0) > syncedAt) {
       state.needCloudPush = true;
@@ -493,7 +498,13 @@
       offline: "Offline — saved here only",
       pending: "Saving to the site…",
       miss: "Not on the site yet — tap to retry",
-      ok: when ? "On the site · " + when : "On the site",
+      ok: (function () {
+        const n = footballCount(state.book);
+        const bits = ["On the site"];
+        if (n) bits.push(n === 1 ? "1 football" : n + " footballs");
+        if (when) bits.push(when);
+        return bits.join(" · ");
+      })(),
     };
     if (!status || !labels[status]) {
       el.hidden = true;

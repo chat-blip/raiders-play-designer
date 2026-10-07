@@ -43,8 +43,8 @@
 
   function otherShell() {
     var p = location.pathname || "";
-    if (/got\.html$/i.test(p)) return "auto.html";
-    return "got.html";
+    if (/all\.html$/i.test(p)) return "got.html";
+    return "all.html";
   }
 
   function isOffline() {
@@ -214,6 +214,16 @@
     return api + "/repos/" + c.owner + "/" + c.repo + "/contents/" + c.path;
   }
 
+  function extrasPath() {
+    const c = cfg();
+    return (c && c.extras) || "play-extras.json";
+  }
+
+  function extrasUrl() {
+    const c = cfg();
+    return api + "/repos/" + c.owner + "/" + c.repo + "/contents/" + extrasPath();
+  }
+
   function authHeaders(extra) {
     const c = cfg();
     const headers = { Accept: "application/vnd.github+json" };
@@ -293,7 +303,7 @@
     ];
     for (let i = 0; i < urls.length; i++) {
       try {
-        const r = await fetchOk(urls[i], { cache: "no-store" }, 4000);
+        const r = await fetchOk(urls[i], { cache: "no-store" }, 20000);
         if (!r.ok) continue;
         const book = await r.json();
         if (book && Array.isArray(book.plays)) return book;
@@ -316,11 +326,130 @@
     }
   }
 
+  function extrasFromBook(book) {
+    const footballs = {};
+    ((book && book.plays) || []).forEach(function (p) {
+      if (p && p.football) {
+        footballs[p.id] = { x: p.football.x, y: p.football.y, name: p.name || "" };
+      }
+    });
+    return { exportedAt: (book && book.exportedAt) || Date.now(), footballs: footballs };
+  }
+
+  function applyExtras(book, extras) {
+    if (!book || !extras || !extras.footballs) return book;
+    Object.keys(extras.footballs).forEach(function (id) {
+      const spot = extras.footballs[id];
+      if (!spot) return;
+      let p = (book.plays || []).find(function (x) { return x.id === id; });
+      if (!p && spot.name) {
+        p = (book.plays || []).find(function (x) { return x.name === spot.name && !x.football; });
+      }
+      if (p && !p.football) p.football = { x: spot.x, y: spot.y };
+    });
+    return book;
+  }
+
+  function parseExtras(b64) {
+    if (!b64) return null;
+    try {
+      const extras = JSON.parse(decodeB64(b64));
+      return extras && extras.footballs ? extras : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async function pullExtras() {
+    if (isOffline()) return null;
+    const c = cfg();
+    try {
+      const r = await fetchOk(extrasUrl(), { headers: authHeaders(), cache: "no-store" }, 10000);
+      if (r.ok) {
+        const meta = await r.json();
+        if (meta && meta.sha) window.RaidersCloud.extrasSha = meta.sha;
+        const extras = parseExtras(meta && meta.content);
+        if (extras) return extras;
+      }
+    } catch (e) {}
+    const owner = (c && c.owner) || "chat-blip";
+    const repo = (c && c.repo) || "raiders-play-designer";
+    const path = extrasPath();
+    const urls = [
+      "https://raw.githubusercontent.com/" + owner + "/" + repo + "/main/" + path + "?t=" + Date.now(),
+      path + "?t=" + Date.now(),
+    ];
+    for (let i = 0; i < urls.length; i++) {
+      try {
+        const r = await fetchOk(urls[i], { cache: "no-store" }, 8000);
+        if (!r.ok) continue;
+        const extras = await r.json();
+        if (extras && extras.footballs) return extras;
+      } catch (e) {}
+    }
+    return null;
+  }
+
+  async function pushExtras(book) {
+    if (!canPush() || !book) return { ok: false };
+    let extras = extrasFromBook(book);
+    try {
+      const theirs = await pullExtras();
+      if (theirs && theirs.footballs) {
+        Object.keys(theirs.footballs).forEach(function (id) {
+          if (!extras.footballs[id]) extras.footballs[id] = theirs.footballs[id];
+        });
+      }
+    } catch (e) {}
+    const content = toB64(JSON.stringify(extras));
+    const payload = {
+      message: "Update play extras",
+      content: content,
+      sha: window.RaidersCloud.extrasSha || undefined,
+    };
+    try {
+      let r = await fetchOk(extrasUrl(), {
+        method: "PUT",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(payload),
+      }, 15000);
+      if (r.status === 409 || r.status === 422) {
+        const latest = await fetchOk(extrasUrl(), { headers: authHeaders(), cache: "no-store" }, 8000);
+        if (latest.ok) {
+          const meta = await latest.json();
+          if (meta && meta.sha) {
+            window.RaidersCloud.extrasSha = meta.sha;
+            payload.sha = meta.sha;
+            r = await fetchOk(extrasUrl(), {
+              method: "PUT",
+              headers: authHeaders({ "Content-Type": "application/json" }),
+              body: JSON.stringify(payload),
+            }, 15000);
+          }
+        } else if (r.status === 422) {
+          delete payload.sha;
+          r = await fetchOk(extrasUrl(), {
+            method: "PUT",
+            headers: authHeaders({ "Content-Type": "application/json" }),
+            body: JSON.stringify(payload),
+          }, 15000);
+        }
+      }
+      if (!r.ok) return { ok: false, reason: "http-" + r.status };
+      const out = await r.json();
+      if (out && out.content && out.content.sha) window.RaidersCloud.extrasSha = out.content.sha;
+      return { ok: true, extras: extras };
+    } catch (e) {
+      return { ok: false, reason: "network" };
+    }
+  }
+
   async function pull() {
     if (isOffline()) return null;
+    const extras = await pullExtras();
     for (let i = 0; i < 3; i++) {
       const book = await pullOnce();
-      if (book) return book;
+      if (book) return applyExtras(book, extras);
     }
     return null;
   }
@@ -328,12 +457,13 @@
   async function push(book) {
     const c = cfg();
     if (!canPush() || !book) return { ok: false, reason: "offline" };
+    const extrasRes = await pushExtras(book);
     const body = JSON.stringify(book);
     let content = "";
     try {
       content = toB64(body);
     } catch (e) {
-      return { ok: false, reason: "encode" };
+      return extrasRes && extrasRes.ok ? { ok: true, extrasOnly: true } : { ok: false, reason: "encode" };
     }
     try {
       const sha = window.RaidersCloud.sha || (await latestSha());
@@ -359,18 +489,19 @@
           }, 45000);
         }
       }
-      if (!r.ok) return { ok: false, reason: "http-" + r.status };
+      if (!r.ok) return extrasRes && extrasRes.ok ? { ok: true, extrasOnly: true } : { ok: false, reason: "http-" + r.status };
       const out = await r.json();
       if (out && out.content && out.content.sha) window.RaidersCloud.sha = out.content.sha;
       else if (out && out.commit) await latestSha();
       return { ok: true };
     } catch (e) {
-      return { ok: false, reason: "network" };
+      return extrasRes && extrasRes.ok ? { ok: true, extrasOnly: true } : { ok: false, reason: "network" };
     }
   }
 
   window.RaidersCloud = {
     sha: null,
+    extrasSha: null,
     hasPin: hasPin,
     canPush: canPush,
     unlock: unlock,
@@ -378,6 +509,8 @@
     reloadFresh: reloadFresh,
     pull: pull,
     push: push,
+    pullExtras: pullExtras,
+    applyExtras: applyExtras,
     isOffline: isOffline,
   };
 
