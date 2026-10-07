@@ -688,7 +688,7 @@
       padding: 8px 12px; border-radius: 6px; opacity: 0; pointer-events: none; transition: opacity .15s;
     }
     #toast.show { opacity: 1; }
-    #offlineChip {
+    #syncChip, #offlineChip {
       position: fixed;
       left: 12px;
       bottom: max(12px, env(safe-area-inset-bottom, 0px));
@@ -701,7 +701,11 @@
       border-radius: 8px;
       box-shadow: 0 8px 20px rgba(11, 31, 58, 0.3);
     }
-    #offlineChip[hidden] { display: none !important; }
+    #syncChip.ok { background: #2d6a4f; color: #fff; }
+    #syncChip.pending { background: var(--navy); color: #fff; }
+    #syncChip.miss, #syncChip.offline { background: var(--gold); color: var(--navy); }
+    #syncChip[hidden], #offlineChip[hidden] { display: none !important; }
+    body.present #syncChip, body.locked #syncChip,
     body.present #offlineChip, body.locked #offlineChip { display: none !important; }
     .player circle { fill: #fff; stroke: #111; stroke-width: 2.4; }
     .player.red circle { fill: #e53935; stroke: #111; }
@@ -765,7 +769,7 @@
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
-      .top, .sidebar, .tools, .hint, .touch-bar, #toast, .handle, .col-resizer, .present-dock, .present-sketch, .editor-flip, #offlineChip, #pinGate, #formStudio { display: none !important; }
+      .top, .sidebar, .tools, .hint, .touch-bar, #toast, .handle, .col-resizer, .present-dock, .present-sketch, .editor-flip, #syncChip, #offlineChip, #pinGate, #formStudio { display: none !important; }
       .app, .layout, .stage {
         display: block;
         width: 100%;
@@ -841,7 +845,7 @@
     <header class="top">
       <div class="brand">RAIDERS <span>Play Designer · 4th Grade</span></div>
       <button type="button" id="btnSignOut" class="ghost" title="Forget this device and load a fresh copy of the designer">Sign out</button>
-      <button type="button" id="btnReloadFresh" class="ghost" title="Load the latest plays from the site. Use this after you edit on a tablet or phone.">Refresh</button>
+      <button type="button" id="btnReloadFresh" class="ghost" title="Saves this device to the site first, then loads that same book on this screen.">Refresh</button>
       <button type="button" id="btnFormations" class="ghost" title="Edit I Right or any formation. Move X and Z, Save changes. New plays pick it up; plays you already drew stay put.">Formations</button>
       <div class="spacer"></div>
       <button type="button" id="btnUndo" class="ghost">Undo</button>
@@ -1022,7 +1026,7 @@
           <b>Formations</b> lets you tap I Right, move X and Z, and Save changes. New plays pick it up. Plays you already drew stay put.<br />
           <b>Football</b> is optional. During motion it stays on the center. After that it follows blue lines in the order they start.<br />
           <b>Play</b> moves the circles — motion first, then each player on his own line. Pause in the middle. When it finishes, tap <b>Reset</b> to put them back on their spots, then Play again.<br />
-          <b>↑ ↓</b> next play · <b>Ctrl+Z</b> undo · <b>C</b> curve · <b>F</b> flip · <b>Full screen</b> for the kids · saves to this site.
+          <b>↑ ↓</b> next play · <b>Ctrl+Z</b> undo · <b>C</b> curve · <b>F</b> flip · <b>Full screen</b> for the kids · every save goes to the site so the next computer or tablet gets the same book.
         </p>
       </aside>
     </div>
@@ -1102,11 +1106,11 @@
     </div>
   </div>
   <div id="toast"></div>
-  <div id="offlineChip" hidden>Offline — saved on this device</div>
-  <script src="plays.js?v=cloud69"></script>
-  <script src="playbook-data.js?v=cloud69"></script>
-  <script src="cloud-config.js?v=cloud69"></script>
-  <script src="cloud.js?v=cloud69"></script>
-  <script src="app.js?v=cloud69"></script>
+  <div id="syncChip" hidden></div>
+  <script src="plays.js?v=cloud70"></script>
+  <script src="playbook-data.js?v=cloud70"></script>
+  <script src="cloud-config.js?v=cloud70"></script>
+  <script src="cloud.js?v=cloud70"></script>
+  <script src="app.js?v=cloud70"></script>
 </body>
 </html>

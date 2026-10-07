@@ -43,8 +43,8 @@
 
   function otherShell() {
     var p = location.pathname || "";
-    if (/cut\.html$/i.test(p)) return "first.html";
-    return "cut.html";
+    if (/both\.html$/i.test(p)) return "cut.html";
+    return "both.html";
   }
 
   function isOffline() {
@@ -92,13 +92,21 @@
     const go = function () {
       location.replace(appDir() + otherShell() + "?t=" + Date.now());
     };
-    if (!("serviceWorker" in navigator)) {
-      go();
+    const afterFlush = function () {
+      if (!("serviceWorker" in navigator)) {
+        go();
+        return;
+      }
+      navigator.serviceWorker.getRegistrations().then(function (regs) {
+        return Promise.all(regs.map(function (reg) { return reg.unregister(); }));
+      }).then(go, go);
+    };
+    const flush = window.RaidersFlushCloud;
+    if (typeof flush === "function") {
+      Promise.resolve(flush()).then(afterFlush, afterFlush);
       return;
     }
-    navigator.serviceWorker.getRegistrations().then(function (regs) {
-      return Promise.all(regs.map(function (reg) { return reg.unregister(); }));
-    }).then(go, go);
+    afterFlush();
   }
 
   function checkBuild() {
@@ -234,8 +242,7 @@
     return null;
   }
 
-  async function pull() {
-    if (isOffline()) return null;
+  async function pullOnce() {
     try {
       return await withTimeout((async function () {
         try {
@@ -243,10 +250,19 @@
           if (fromApi) return fromApi;
         } catch (e) {}
         return await pullFromRaw();
-      })(), 10000);
+      })(), 12000);
     } catch (e) {
       return null;
     }
+  }
+
+  async function pull() {
+    if (isOffline()) return null;
+    for (let i = 0; i < 3; i++) {
+      const book = await pullOnce();
+      if (book) return book;
+    }
+    return null;
   }
 
   async function push(book) {

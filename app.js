@@ -1,6 +1,7 @@
 /* Raiders play designer — drag players, draw assignments, save locally */
 (function () {
   const STORE = "raiders-playbook-v1";
+  const CLOUD_AT = "raiders-cloud-at";
   const UI_STORE = "raiders-ui-v1";
   const SIDE_MIN = 80;
   const SIDE_DEFAULT = 268;
@@ -42,7 +43,9 @@
     redo: [],
     dirtyTimer: null,
     cloudTimer: null,
+    syncHideTimer: null,
     needCloudPush: false,
+    syncStatus: "",
     fieldEdit: null,
     studio: null,
     fillingForms: false,
@@ -222,15 +225,37 @@
     }
   }
 
+  function lastCloudAt() {
+    try {
+      return Number(localStorage.getItem(CLOUD_AT) || 0) || 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  function rememberCloudAt(at) {
+    try {
+      localStorage.setItem(CLOUD_AT, String(at || 0));
+    } catch (e) {}
+  }
+
+  function setSyncStatus(status) {
+    state.syncStatus = status || "";
+    syncStatusChip();
+  }
+
   function save(opts) {
     if (state.book) state.book.exportedAt = Date.now();
     if (!persistBook(state.book)) toast("Could not save locally");
-    if (!opts || opts.cloud !== false) scheduleCloudSave();
+    if (!opts || opts.cloud !== false) {
+      setSyncStatus(navigator.onLine === false ? "offline" : "pending");
+      scheduleCloudSave();
+    }
   }
 
   function scheduleCloudSave() {
     clearTimeout(state.cloudTimer);
-    state.cloudTimer = setTimeout(pushCloud, 2000);
+    state.cloudTimer = setTimeout(function () { pushCloud(0); }, 500);
   }
 
   function adoptCloudBook(book) {
@@ -244,17 +269,40 @@
     return true;
   }
 
-  function pushCloud() {
-    if (navigator.onLine === false) return;
+  function applyPushResult(res) {
+    if (res && res.book && bookOk(res.book)) {
+      const theirs = (res.book.exportedAt || 0) >= ((state.book && state.book.exportedAt) || 0);
+      if (theirs && adoptCloudBook(res.book)) {
+        rememberCloudAt(res.book.exportedAt || 0);
+        setSyncStatus("ok");
+        render();
+        return "adopted";
+      }
+    }
+    if (res && res.ok) {
+      rememberCloudAt((state.book && state.book.exportedAt) || Date.now());
+      setSyncStatus("ok");
+      return "ok";
+    }
+    return "";
+  }
+
+  function pushCloud(attempt) {
+    const n = attempt || 0;
+    if (navigator.onLine === false) {
+      setSyncStatus("offline");
+      return;
+    }
     if (!window.RaidersCloud || !window.RaidersCloud.canPush()) return;
+    setSyncStatus("pending");
     window.RaidersCloud.push(state.book).then(function (res) {
-      if (res && res.book && bookOk(res.book) && (res.book.exportedAt || 0) > ((state.book && state.book.exportedAt) || 0)) {
-        if (adoptCloudBook(res.book)) render();
+      if (applyPushResult(res)) return;
+      if (n < 4) {
+        state.cloudTimer = setTimeout(function () { pushCloud(n + 1); }, 900 * (n + 1));
         return;
       }
-      if (res && res.ok) return;
-      if (!res || res.reason === "offline" || res.reason === "network") return;
-      toast("Cloud save missed — will try again");
+      setSyncStatus("miss");
+      toast("Not on the site yet — will keep trying");
     });
   }
 
@@ -263,12 +311,17 @@
     clearTimeout(state.cloudTimer);
     if (!state.book) return;
     if (!persistBook(state.book)) toast("Could not save locally");
-    if (navigator.onLine === false) return;
+    if (navigator.onLine === false) {
+      setSyncStatus("offline");
+      return;
+    }
     if (!window.RaidersCloud || !window.RaidersCloud.canPush()) return;
+    setSyncStatus("pending");
     const res = await window.RaidersCloud.push(state.book);
-    if (res && res.book && bookOk(res.book)) adoptCloudBook(res.book);
-    else if (res && !res.ok && res.reason !== "offline" && res.reason !== "network") {
-      toast("Cloud save missed — will try again");
+    if (applyPushResult(res)) return;
+    setSyncStatus("miss");
+    if (res && !res.ok && res.reason !== "offline" && res.reason !== "network") {
+      toast("Not on the site yet — will keep trying");
     }
   }
 
@@ -278,29 +331,36 @@
     return !!(b && Array.isArray(b.plays) && b.plays.length);
   }
 
-  function load() {
-    let stored = null;
+  function readStoredBook() {
     try {
       const raw = localStorage.getItem(STORE);
-      if (raw) stored = JSON.parse(raw);
-    } catch (e) {}
+      if (!raw) return null;
+      const stored = JSON.parse(raw);
+      return bookOk(stored) ? stored : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function loadFallback() {
     const portable = window.RAIDERS_PORTABLE_BOOK;
-    const portableOk = bookOk(portable);
-    const storedOk = bookOk(stored);
-    const pAt = portableOk ? portable.exportedAt || 0 : 0;
-    const sAt = storedOk ? stored.exportedAt || 0 : 0;
-    if (portableOk && (!storedOk || pAt > sAt)) {
+    if (bookOk(portable)) {
       const book = clone(portable);
       ensureSets(book);
       return book;
     }
-    if (storedOk) {
-      ensureSets(stored);
-      return stored;
-    }
     const seed = RaidersPlays.buildSeedPlaybook();
     ensureSets(seed);
     return seed;
+  }
+
+  function load() {
+    const stored = readStoredBook();
+    if (stored) {
+      ensureSets(stored);
+      return stored;
+    }
+    return loadFallback();
   }
 
   async function loadPreferred() {
@@ -311,37 +371,79 @@
       forceCloud = sessionStorage.getItem("raiders-prefer-cloud") === "1";
       sessionStorage.removeItem("raiders-prefer-cloud");
     } catch (e) {}
-    const local = load();
+    const stored = readStoredBook();
+    const syncedAt = lastCloudAt();
     if (navigator.onLine === false) {
+      const local = stored || loadFallback();
       ensureSets(local);
+      setSyncStatus("offline");
       return local;
     }
     const cloud = window.RaidersCloud ? await window.RaidersCloud.pull() : null;
     if (bookOk(cloud)) {
-      const localAt = bookOk(local) ? local.exportedAt || 0 : 0;
       const cloudAt = cloud.exportedAt || 0;
-      const localN = bookOk(local) ? local.plays.length : 0;
-      const cloudN = cloud.plays.length;
-      if (!forceCloud && bookOk(local) && localAt > cloudAt && localN >= cloudN) {
+      const storedAt = stored ? stored.exportedAt || 0 : 0;
+      const unsynced = !!(stored && syncedAt && storedAt > syncedAt);
+      if (!forceCloud && unsynced) {
         state.needCloudPush = true;
-        ensureSets(local);
-        return local;
+        state.cloudNote = "This device has newer plays — sending them to the site";
+        ensureSets(stored);
+        setSyncStatus("pending");
+        return stored;
       }
+      rememberCloudAt(cloudAt);
       ensureSets(cloud);
       persistBook(cloud);
-      if (forceCloud || (bookOk(local) && local.plays.length !== cloud.plays.length)) {
+      if (forceCloud || !stored || storedAt !== cloudAt) {
         state.cloudNote = "Loaded the site copy · " + cloud.plays.length + " plays";
       }
+      setSyncStatus("ok");
       return cloud;
     }
+    const local = stored || loadFallback();
     ensureSets(local);
+    if (stored && syncedAt && (stored.exportedAt || 0) > syncedAt) {
+      state.needCloudPush = true;
+      setSyncStatus("pending");
+    } else {
+      setSyncStatus("miss");
+    }
     return local;
   }
 
-  function syncOfflineChip() {
-    const el = $("offlineChip");
+  function syncStatusChip() {
+    const el = $("syncChip") || $("offlineChip");
     if (!el) return;
-    el.hidden = navigator.onLine !== false;
+    if (navigator.onLine === false) state.syncStatus = "offline";
+    const status = state.syncStatus || (navigator.onLine === false ? "offline" : "");
+    const labels = {
+      offline: "Offline — saved here only",
+      pending: "Saving to the site…",
+      miss: "Not on the site yet",
+      ok: "On the site",
+    };
+    if (!status || !labels[status]) {
+      el.hidden = true;
+      el.textContent = "";
+      el.className = "";
+      return;
+    }
+    el.id = "syncChip";
+    el.className = status;
+    el.textContent = labels[status];
+    el.hidden = false;
+    if (status === "ok") {
+      clearTimeout(state.syncHideTimer);
+      state.syncHideTimer = setTimeout(function () {
+        if (state.syncStatus === "ok" && el) el.hidden = true;
+      }, 4000);
+    }
+  }
+
+  function syncOfflineChip() {
+    if (navigator.onLine === false) setSyncStatus("offline");
+    else if (state.syncStatus === "offline") setSyncStatus(state.needCloudPush ? "pending" : "ok");
+    else syncStatusChip();
   }
 
   function ensureSets(book) {
@@ -4291,8 +4393,11 @@
     window.addEventListener("offline", syncOfflineChip);
     if (state.needCloudPush) scheduleCloudSave();
     if (state.cloudNote) toast(state.cloudNote);
-    window.addEventListener("pagehide", function () {
-      flushCloud();
+    const leave = function () { flushCloud(); };
+    window.addEventListener("pagehide", leave);
+    window.addEventListener("freeze", leave);
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden") flushCloud();
     });
   }
 
