@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths-ignore:
       - "playbook.json"
+      - "play-extras.json"
   workflow_dispatch:
 
 permissions:
