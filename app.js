@@ -781,39 +781,30 @@
     return (pts && pts.length && pts[pts.length - 1]) || assignEnd(a);
   }
 
-  function ballPlayerRank(id) {
-    const rank = { QB: 0, A: 1, B: 2, Y: 3, X: 4, Z: 5 };
-    return rank[id] != null ? rank[id] : 20;
-  }
-
   function orderBallAssigns(playObj) {
     const balls = ballAssigns(playObj);
     return balls.slice().sort(function (a, b) {
-      const ra = ballPlayerRank(a.from);
-      const rb = ballPlayerRank(b.from);
-      if (ra !== rb) return ra - rb;
       return (playObj.assignments || []).indexOf(a) - (playObj.assignments || []).indexOf(b);
     });
   }
 
   function ballHands(playObj, tracksBag) {
-    const byId = {};
+    const hands = [];
     Object.keys(tracksBag || {}).forEach(function (id) {
+      let t = 0;
       (tracksBag[id].play || []).forEach(function (tr) {
-        if (tr.type !== "ball") return;
-        byId[tr.id || id] = tr;
-        if (!byId[id]) byId[id] = tr;
+        const ms = (tr.len / Math.max(tr.speed, 1)) * 1000;
+        if (tr.type === "ball") {
+          hands.push({ from: id, start: t, dur: ms, id: tr.id });
+        }
+        t += ms;
       });
     });
-    const hands = [];
-    orderBallAssigns(playObj).forEach(function (a) {
-      const tr = byId[a.id] || byId[a.from];
-      if (!tr) return;
-      hands.push({
-        from: a.from,
-        dur: (tr.len / Math.max(tr.speed, 1)) * 1000,
-        id: a.id,
-      });
+    hands.sort(function (a, b) {
+      if (a.start !== b.start) return a.start - b.start;
+      const ia = (playObj.assignments || []).findIndex(function (x) { return x.id === a.id; });
+      const ib = (playObj.assignments || []).findIndex(function (x) { return x.id === b.id; });
+      return ia - ib;
     });
     return hands;
   }
@@ -1972,7 +1963,7 @@
       block: "Tap the player. After motion or a ball path, the T-bar starts at that arrow — then tap where he blocks. Hold Alt to start from the circle.",
       motion: "Tap a player, then tap where he motions. After a ball path (or any line), motion starts at that arrow. Enter to finish. Hold Alt to start from the circle.",
       ball: "After a route or motion, tap the player (or the field). The ball starts at that arrow, not the circle. Then tap the path and Enter.",
-      football: "Tap the field to show the ball on this play. During motion it stays on the center. After motion: QB, then A, then B.",
+      football: "Tap the field to show the ball on this play. During motion it stays on the center. After that it follows blue lines in the order they start.",
       paintRed: "Click a player to mark the ball carrier (red).",
       paintGold: "Click receivers to mark them gold. Click again to clear. You can mark more than one.",
       addOff: "Click the field to add an offensive player.",
