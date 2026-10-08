@@ -43,8 +43,8 @@
 
   function otherShell() {
     var p = location.pathname || "";
-    if (/view\.html$/i.test(p)) return "all.html";
-    return "view.html";
+    if (/opt\.html$/i.test(p)) return "view.html";
+    return "opt.html";
   }
 
   function isOffline() {

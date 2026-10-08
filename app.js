@@ -1040,22 +1040,12 @@
     return (p.players || []).find(function (x) { return x.id === id || x.label === id; });
   }
 
-  function playHasBallLines(p) {
-    return !!(p && (p.assignments || []).some(function (a) {
-      return a.type === "ball" && (a.points || []).length >= 2;
-    }));
-  }
-
   function footballDrawPos(p, live) {
-    if (!p) return null;
-    const placed = p.football;
-    const animating = !!(live && state.anim && (placed || playHasBallLines(p)));
-    if (!placed && !animating) return null;
+    if (!p || !p.football) return null;
     if (live && state.anim) {
       if (state.anim.phase === "motion") {
         const c = findPlayer(p, "C");
-        if (c) return { x: c.x, y: c.y };
-        if (placed) return { x: placed.x, y: placed.y };
+        return c ? { x: c.x, y: c.y } : { x: p.football.x, y: p.football.y };
       }
       if (state.anim.ballHands && state.anim.ballHands.length) {
         const elapsed = state.anim.phase === "done" ? 1e9 : (state.anim.elapsed || 0);
@@ -1063,11 +1053,8 @@
         const pl = hand && findPlayer(p, hand.from);
         if (pl) return playerDrawPos(pl, true);
       }
-      if (placed) return { x: placed.x, y: placed.y };
-      const snap = findPlayer(p, "C") || findPlayer(p, "QB");
-      return snap ? { x: snap.x, y: snap.y } : null;
     }
-    return placed ? { x: placed.x, y: placed.y } : null;
+    return { x: p.football.x, y: p.football.y };
   }
 
   function hitFootball(pt, p) {
