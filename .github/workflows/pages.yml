@@ -29,6 +29,7 @@ jobs:
         env:
           PLAYBOOK_TOKEN: ${{ secrets.PLAYBOOK_TOKEN }}
           PLAYBOOK_PIN: ${{ secrets.PLAYBOOK_PIN }}
+          PLAYBOOK_COACH_PIN: ${{ secrets.PLAYBOOK_COACH_PIN }}
         run: |
           mkdir -p site
           cp index.html app.js plays.js playbook.json play-extras.json playbook-data.js pack-assets.js cloud.js sw.js manifest.json robots.txt OPEN-ME.txt .nojekyll site/
@@ -41,6 +42,7 @@ jobs:
             "extras": "play-extras.json",
             "token": os.environ.get("PLAYBOOK_TOKEN") or "",
             "pin": os.environ.get("PLAYBOOK_PIN") or "",
+            "coachPin": os.environ.get("PLAYBOOK_COACH_PIN") or "",
           }
           open("site/cloud-config.js", "w", encoding="utf-8").write(
               "window.RAIDERS_CLOUD = " + json.dumps(cfg) + ";\n"
@@ -90,12 +92,14 @@ jobs:
           pathlib.Path("site/view.html").write_text(text, encoding="utf-8")
           pathlib.Path("site/opt.html").write_text(text, encoding="utf-8")
           pathlib.Path("site/send.html").write_text(text, encoding="utf-8")
+          pathlib.Path("site/guest.html").write_text(text, encoding="utf-8")
           pathlib.Path("site/version.json").write_text(
               json.dumps({"build": "run" + stamp}) + "\n",
               encoding="utf-8",
           )
           print("cloud_token_len", len(cfg["token"]))
           print("cloud_pin_len", len(cfg["pin"]))
+          print("cloud_coach_pin_len", len(cfg.get("coachPin") or ""))
           print("build", "run" + stamp)
           PY
       - uses: actions/configure-pages@v5

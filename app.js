@@ -56,8 +56,13 @@
 
   const $ = (id) => document.getElementById(id);
 
+  function isCoachPack() {
+    return document.documentElement.getAttribute("data-pack-coach") === "1";
+  }
+
   function isCoach() {
-    return document.documentElement.getAttribute("data-coach") === "1";
+    return document.documentElement.getAttribute("data-coach") === "1" ||
+      !!(window.RaidersCloud && window.RaidersCloud.isCoach && window.RaidersCloud.isCoach());
   }
 
   function play() {
@@ -450,7 +455,7 @@
   async function loadPreferred() {
     state.needCloudPush = false;
     state.cloudNote = "";
-    if (isCoach()) {
+    if (isCoachPack()) {
       const book = loadFallback();
       ensureSets(book);
       return book;
@@ -476,6 +481,13 @@
     if (bookOk(cloud)) {
       const cloudAt = cloud.exportedAt || 0;
       const storedAt = stored ? stored.exportedAt || 0 : 0;
+      if (isCoach()) {
+        rememberCloudAt(cloudAt);
+        ensureSets(cloud);
+        persistBook(cloud, { allowDowngrade: true });
+        setSyncStatus("ok");
+        return cloud;
+      }
       if (stored && bookRicher(stored, cloud)) {
         state.needCloudPush = true;
         state.cloudNote = "Kept the footballs and plays on this device — sending them to the site";
@@ -3938,7 +3950,7 @@
   function coachIndexHtml(indexHtml) {
     let text = String(indexHtml || "");
     if (text.indexOf("data-coach=") < 0) {
-      text = text.replace("<html", '<html data-coach="1"');
+      text = text.replace("<html", '<html data-coach="1" data-pack-coach="1"');
     }
     text = text.replace(/<script src="cloud-config\.js[^"]*"><\/script>\s*/gi, "");
     text = text.replace(/<script src="cloud\.js[^"]*"><\/script>\s*/gi, "");

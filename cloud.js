@@ -1,6 +1,7 @@
 /* Cloud playbook: PIN gate + GitHub Contents API auto-save */
 (function () {
   const UNLOCK = "raiders-cloud-unlock";
+  const ROLE = "raiders-cloud-role";
   const api = "https://api.github.com";
 
   function cfg() {
@@ -12,23 +13,60 @@
     return !!(c && c.pin);
   }
 
+  function pinRole(pin) {
+    const c = cfg();
+    if (!c || !pin) return "";
+    if (c.pin && pin === c.pin) return "edit";
+    if (c.coachPin && pin === c.coachPin) return "coach";
+    return "";
+  }
+
+  function applyLiveRole(role) {
+    try {
+      if (role) localStorage.setItem(ROLE, role);
+    } catch (e) {}
+    if (role === "coach") {
+      document.documentElement.setAttribute("data-coach", "1");
+      document.documentElement.setAttribute("data-live-coach", "1");
+    } else {
+      document.documentElement.removeAttribute("data-live-coach");
+      if (document.documentElement.getAttribute("data-coach") === "1" &&
+          document.documentElement.getAttribute("data-pack-coach") !== "1") {
+        document.documentElement.removeAttribute("data-coach");
+      }
+    }
+  }
+
+  function isLiveCoach() {
+    try {
+      if (localStorage.getItem(ROLE) === "coach") return true;
+    } catch (e) {}
+    return document.documentElement.getAttribute("data-live-coach") === "1";
+  }
+
   function canPush() {
-    if (isOffline()) return false;
+    if (isOffline() || isLiveCoach()) return false;
     const c = cfg();
     return !!(c && c.token && c.owner && c.repo && c.path);
   }
 
-  function rememberOk(pin) {
+  function rememberOk(pin, role) {
     try {
       localStorage.setItem(UNLOCK, pin);
+      localStorage.setItem(ROLE, role || "edit");
     } catch (e) {}
+    applyLiveRole(role || "edit");
   }
 
   function remembered() {
     const c = cfg();
     if (!c || !c.pin) return true;
     try {
-      return localStorage.getItem(UNLOCK) === c.pin;
+      const pin = localStorage.getItem(UNLOCK);
+      const role = pinRole(pin);
+      if (!role) return false;
+      applyLiveRole(role);
+      return true;
     } catch (e) {
       return false;
     }
@@ -43,8 +81,8 @@
 
   function otherShell() {
     var p = location.pathname || "";
-    if (/send\.html$/i.test(p)) return "opt.html";
-    return "send.html";
+    if (/guest\.html$/i.test(p)) return "send.html";
+    return "guest.html";
   }
 
   function isOffline() {
@@ -137,6 +175,7 @@
     const done = function () {
       try {
         localStorage.removeItem(UNLOCK);
+        localStorage.removeItem(ROLE);
       } catch (e) {}
       try {
         sessionStorage.removeItem("raiders-prefer-cloud");
@@ -187,8 +226,9 @@
       form.onsubmit = function (e) {
         e.preventDefault();
         const pin = String(input.value || "");
-        if (pin === cfg().pin) {
-          rememberOk(pin);
+        const role = pinRole(pin);
+        if (role) {
+          rememberOk(pin, role);
           if (err) err.textContent = "";
           hideGate();
           resolve(true);
@@ -504,6 +544,7 @@
     extrasSha: null,
     hasPin: hasPin,
     canPush: canPush,
+    isCoach: isLiveCoach,
     unlock: unlock,
     signOut: signOut,
     reloadFresh: reloadFresh,

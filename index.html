@@ -707,8 +707,8 @@
     #syncChip[hidden], #offlineChip[hidden] { display: none !important; }
     body.present #syncChip, body.locked #syncChip,
     body.present #offlineChip, body.locked #offlineChip { display: none !important; }
-    html[data-coach="1"] #btnSignOut,
-    html[data-coach="1"] #btnReloadFresh,
+    html[data-coach="1"]:not([data-live-coach="1"]) #btnSignOut,
+    html[data-coach="1"]:not([data-live-coach="1"]) #btnReloadFresh,
     html[data-coach="1"] #btnFormations,
     html[data-coach="1"] #btnUndo,
     html[data-coach="1"] #btnRedo,
@@ -1103,7 +1103,7 @@
   <div id="pinGate" hidden>
     <form class="box" id="pinForm">
       <h1>Raiders</h1>
-      <p>Play designer · enter the coach PIN</p>
+      <p>Enter your PIN</p>
       <input id="pinInput" type="password" autocomplete="current-password" placeholder="PIN" />
       <button type="submit">Open playbook</button>
       <button type="button" id="btnFreshReload" class="ghost-pin">Load a fresh copy</button>
@@ -1139,10 +1139,10 @@
   </div>
   <div id="toast"></div>
   <div id="syncChip" hidden></div>
-  <script src="plays.js?v=cloud78"></script>
-  <script src="playbook-data.js?v=cloud78"></script>
-  <script src="cloud-config.js?v=cloud78"></script>
-  <script src="cloud.js?v=cloud78"></script>
-  <script src="app.js?v=cloud78"></script>
+  <script src="plays.js?v=cloud79"></script>
+  <script src="playbook-data.js?v=cloud79"></script>
+  <script src="cloud-config.js?v=cloud79"></script>
+  <script src="cloud.js?v=cloud79"></script>
+  <script src="app.js?v=cloud79"></script>
 </body>
 </html>
