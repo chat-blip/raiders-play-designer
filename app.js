@@ -56,6 +56,10 @@
 
   const $ = (id) => document.getElementById(id);
 
+  function isCoach() {
+    return document.documentElement.getAttribute("data-coach") === "1";
+  }
+
   function play() {
     return state.book.plays.find((p) => p.id === state.playId) || state.book.plays[0];
   }
@@ -262,6 +266,7 @@
   }
 
   function save(opts) {
+    if (isCoach()) return;
     if (state.book) state.book.exportedAt = Date.now();
     if (!persistBook(state.book)) toast("Could not save locally");
     if (!opts || opts.cloud !== false) {
@@ -445,6 +450,11 @@
   async function loadPreferred() {
     state.needCloudPush = false;
     state.cloudNote = "";
+    if (isCoach()) {
+      const book = loadFallback();
+      ensureSets(book);
+      return book;
+    }
     let forceCloud = false;
     try {
       forceCloud = sessionStorage.getItem("raiders-prefer-cloud") === "1";
@@ -2664,6 +2674,7 @@
     if (window.getSelection) window.getSelection().removeAllRanges();
     const pt = svgPoint(evt);
     const p = play();
+    if (isCoach()) return;
 
     if (state.tool === "addOff" || state.tool === "addDef") {
       pushUndo();
@@ -3924,6 +3935,78 @@
     toast("Laptop pack ready · " + book.plays.length + " plays · " + listed + " on game lists");
   }
 
+  function coachIndexHtml(indexHtml) {
+    let text = String(indexHtml || "");
+    if (text.indexOf("data-coach=") < 0) {
+      text = text.replace("<html", '<html data-coach="1"');
+    }
+    text = text.replace(/<script src="cloud-config\.js[^"]*"><\/script>\s*/gi, "");
+    text = text.replace(/<script src="cloud\.js[^"]*"><\/script>\s*/gi, "");
+    text = text.replace(/<title>[^<]*<\/title>/, "<title>Raiders Playbook · Coach</title>");
+    return text;
+  }
+
+  async function packCoach() {
+    commitPlayFields();
+    const book = clone(state.book);
+    const dataJs =
+      "/* Coach copy — bundled playbook, no cloud */\n" +
+      "window.RAIDERS_PORTABLE_BOOK = " +
+      JSON.stringify(book) +
+      ";\n";
+    if (!window.RAIDERS_PACK_ASSETS) {
+      await new Promise(function (resolve) {
+        const s = document.createElement("script");
+        s.src = "pack-assets.js";
+        s.onload = resolve;
+        s.onerror = resolve;
+        document.head.appendChild(s);
+      });
+    }
+    const assets = window.RAIDERS_PACK_ASSETS || {};
+    async function asset(name) {
+      try {
+        const r = await fetch(name);
+        if (r.ok) return await r.text();
+      } catch (e) {}
+      return assets[name] || "";
+    }
+    const indexHtml = coachIndexHtml(await asset("index.html"));
+    const appJs = await asset("app.js");
+    const playsJs = await asset("plays.js");
+    const bat = '@echo off\r\nstart chrome "%~dp0index.html"\r\nif errorlevel 1 start "" "%~dp0index.html"\r\n';
+    const openMe =
+      "Raiders Playbook — coach copy\r\n\r\n" +
+      "This is a view-only copy. It does not connect to the team site.\r\n\r\n" +
+      "1. Unzip. Keep these files in the same folder.\r\n" +
+      "2. Right-click index.html → Open with → Google Chrome.\r\n" +
+      "   Or double-click Open Coach Playbook.bat\r\n" +
+      "3. No Wi-Fi needed. Play, print, and full screen work.\r\n" +
+      "4. You cannot draw or change plays. Ask for a new zip when the book updates.\r\n";
+    if (!indexHtml || !appJs || !playsJs) {
+      toast("Could not pack the coach files — try again from this same folder");
+      return;
+    }
+    const prefix = "Raiders-Coach-Playbook/";
+    const zip = zipStore([
+      { name: prefix + "index.html", data: indexHtml },
+      { name: prefix + "app.js", data: appJs },
+      { name: prefix + "plays.js", data: playsJs },
+      { name: prefix + "playbook-data.js", data: dataJs },
+      { name: prefix + "Open Coach Playbook.bat", data: bat },
+      { name: prefix + "OPEN-ME.txt", data: openMe },
+    ]);
+    const day = new Date();
+    const stamp =
+      day.getFullYear() +
+      "-" +
+      String(day.getMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(day.getDate()).padStart(2, "0");
+    downloadBytes(zip, "Raiders-Coach-Playbook-" + stamp + ".zip");
+    toast("Coach pack ready · " + book.plays.length + " plays · open in Chrome");
+  }
+
   function importJson(file) {
     const reader = new FileReader();
     reader.onload = () => {
@@ -4321,6 +4404,9 @@
     if ($("btnLaptop")) $("btnLaptop").addEventListener("click", function () {
       packLaptop().catch(function () { toast("Could not build the laptop pack"); });
     });
+    if ($("btnCoachPack")) $("btnCoachPack").addEventListener("click", function () {
+      packCoach().catch(function () { toast("Could not build the coach pack"); });
+    });
     $("btnImport").addEventListener("click", () => $("fileImport").click());
     $("fileImport").addEventListener("change", (e) => {
       const f = e.target.files[0];
@@ -4465,8 +4551,15 @@
     if (prevDef) ensureSelectValue(def, prevDef);
   }
 
+  function applyCoachLock() {
+    if (!isCoach()) return;
+    if ($("notes")) $("notes").setAttribute("readonly", "readonly");
+    if ($("formSelect")) $("formSelect").disabled = true;
+    if ($("defSelect")) $("defSelect").disabled = true;
+  }
+
   async function boot() {
-    if (window.RaidersCloud) await window.RaidersCloud.unlock();
+    if (!isCoach() && window.RaidersCloud) await window.RaidersCloud.unlock();
     fillFormations();
     state.book = await loadPreferred();
     fillFormations();
@@ -4485,6 +4578,8 @@
     setTool("select");
     render();
     setListFocus("book");
+    applyCoachLock();
+    if (isCoach()) return;
     syncOfflineChip();
     window.addEventListener("online", function () {
       syncOfflineChip();

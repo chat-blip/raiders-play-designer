@@ -707,6 +707,37 @@
     #syncChip[hidden], #offlineChip[hidden] { display: none !important; }
     body.present #syncChip, body.locked #syncChip,
     body.present #offlineChip, body.locked #offlineChip { display: none !important; }
+    html[data-coach="1"] #btnSignOut,
+    html[data-coach="1"] #btnReloadFresh,
+    html[data-coach="1"] #btnFormations,
+    html[data-coach="1"] #btnUndo,
+    html[data-coach="1"] #btnRedo,
+    html[data-coach="1"] #btnExport,
+    html[data-coach="1"] #btnLaptop,
+    html[data-coach="1"] #btnCoachPack,
+    html[data-coach="1"] #btnImport,
+    html[data-coach="1"] #btnNew,
+    html[data-coach="1"] #btnDup,
+    html[data-coach="1"] #btnFlip,
+    html[data-coach="1"] #btnDelPlay,
+    html[data-coach="1"] #btnReset,
+    html[data-coach="1"] #btnNewSet,
+    html[data-coach="1"] #btnClearSet,
+    html[data-coach="1"] #btnStudio,
+    html[data-coach="1"] #btnApplyKids,
+    html[data-coach="1"] #whoRow,
+    html[data-coach="1"] #btnEnter,
+    html[data-coach="1"] #btnDelete,
+    html[data-coach="1"] .tool-grid button[data-tool],
+    html[data-coach="1"] .touch-bar,
+    html[data-coach="1"] .drag-side,
+    html[data-coach="1"] #syncChip,
+    html[data-coach="1"] #offlineChip,
+    html[data-coach="1"] #pinGate,
+    html[data-coach="1"] #formStudio {
+      display: none !important;
+    }
+    html[data-coach="1"] .brand span::after { content: " · Coach copy"; }
     .player circle { fill: #fff; stroke: #111; stroke-width: 2.4; }
     .player.red circle { fill: #e53935; stroke: #111; }
     .player.gold circle { fill: #f2c14e; stroke: #111; }
@@ -854,6 +885,7 @@
       <button type="button" id="btnPrintAll">Print all</button>
       <button type="button" id="btnExport" title="Saves plays, kid names, and game lists as a JSON file">Save book</button>
       <button type="button" id="btnLaptop" title="Full folder for Drive: designer + every play, name, and game list">Laptop pack</button>
+      <button type="button" id="btnCoachPack" title="Offline Chrome copy for a coach. Plays and Play work. No cloud. No drawing.">Coach pack</button>
       <button type="button" id="btnImport" class="ghost" title="Load a saved book on this computer">Load book</button>
       <input type="file" id="fileImport" accept="application/json" hidden />
     </header>
@@ -1107,10 +1139,10 @@
   </div>
   <div id="toast"></div>
   <div id="syncChip" hidden></div>
-  <script src="plays.js?v=cloud77"></script>
-  <script src="playbook-data.js?v=cloud77"></script>
-  <script src="cloud-config.js?v=cloud77"></script>
-  <script src="cloud.js?v=cloud77"></script>
-  <script src="app.js?v=cloud77"></script>
+  <script src="plays.js?v=cloud78"></script>
+  <script src="playbook-data.js?v=cloud78"></script>
+  <script src="cloud-config.js?v=cloud78"></script>
+  <script src="cloud.js?v=cloud78"></script>
+  <script src="app.js?v=cloud78"></script>
 </body>
 </html>
