@@ -6,6 +6,8 @@ on:
     paths-ignore:
       - "playbook.json"
       - "play-extras.json"
+      - "playbook-coach.json"
+      - "play-extras-coach.json"
   workflow_dispatch:
 
 permissions:
@@ -32,7 +34,7 @@ jobs:
           PLAYBOOK_COACH_PIN: ${{ secrets.PLAYBOOK_COACH_PIN }}
         run: |
           mkdir -p site
-          cp index.html app.js plays.js playbook.json play-extras.json playbook-data.js pack-assets.js cloud.js sw.js manifest.json robots.txt OPEN-ME.txt .nojekyll site/
+          cp index.html app.js plays.js playbook.json play-extras.json playbook-coach.json play-extras-coach.json playbook-data.js pack-assets.js cloud.js sw.js manifest.json robots.txt OPEN-ME.txt .nojekyll site/
           python3 - <<'PY'
           import json, os, pathlib, re
           cfg = {
@@ -40,6 +42,8 @@ jobs:
             "repo": "raiders-play-designer",
             "path": "playbook.json",
             "extras": "play-extras.json",
+            "coachPath": "playbook-coach.json",
+            "coachExtras": "play-extras-coach.json",
             "token": os.environ.get("PLAYBOOK_TOKEN") or "",
             "pin": os.environ.get("PLAYBOOK_PIN") or "",
             "coachPin": os.environ.get("PLAYBOOK_COACH_PIN") or "",
@@ -93,6 +97,7 @@ jobs:
           pathlib.Path("site/opt.html").write_text(text, encoding="utf-8")
           pathlib.Path("site/send.html").write_text(text, encoding="utf-8")
           pathlib.Path("site/guest.html").write_text(text, encoding="utf-8")
+          pathlib.Path("site/own.html").write_text(text, encoding="utf-8")
           pathlib.Path("site/version.json").write_text(
               json.dumps({"build": "run" + stamp}) + "\n",
               encoding="utf-8",

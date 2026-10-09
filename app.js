@@ -1,9 +1,18 @@
 /* Raiders play designer — drag players, draw assignments, save locally */
 (function () {
-  const STORE = "raiders-playbook-v1";
-  const BACKUP = "raiders-playbook-backup";
-  const CLOUD_AT = "raiders-cloud-at";
   const UI_STORE = "raiders-ui-v1";
+
+  function storeKey() {
+    return isCoach() ? "raiders-playbook-coach-v1" : "raiders-playbook-v1";
+  }
+
+  function backupKey() {
+    return isCoach() ? "raiders-playbook-backup-coach" : "raiders-playbook-backup";
+  }
+
+  function cloudAtKey() {
+    return isCoach() ? "raiders-cloud-at-coach" : "raiders-cloud-at";
+  }
   const SIDE_MIN = 80;
   const SIDE_DEFAULT = 268;
   const TOOL_MIN = 80;
@@ -232,7 +241,7 @@
     const cur = readBackupBook();
     if (cur && bookRicher(cur, candidate)) return;
     try {
-      localStorage.setItem(BACKUP, JSON.stringify(candidate));
+      localStorage.setItem(backupKey(), JSON.stringify(candidate));
     } catch (e) {}
   }
 
@@ -244,7 +253,7 @@
         return false;
       }
       keepBackup(prev);
-      localStorage.setItem(STORE, JSON.stringify(next));
+      localStorage.setItem(storeKey(), JSON.stringify(next));
       return true;
     } catch (e) {
       return false;
@@ -253,7 +262,7 @@
 
   function lastCloudAt() {
     try {
-      return Number(localStorage.getItem(CLOUD_AT) || 0) || 0;
+      return Number(localStorage.getItem(cloudAtKey()) || 0) || 0;
     } catch (e) {
       return 0;
     }
@@ -261,7 +270,7 @@
 
   function rememberCloudAt(at) {
     try {
-      localStorage.setItem(CLOUD_AT, String(at || 0));
+      localStorage.setItem(cloudAtKey(), String(at || 0));
     } catch (e) {}
   }
 
@@ -401,7 +410,7 @@
 
   function readBackupBook() {
     try {
-      const raw = localStorage.getItem(BACKUP);
+      const raw = localStorage.getItem(backupKey());
       if (!raw) return null;
       const book = JSON.parse(raw);
       return bookOk(book) ? book : null;
@@ -422,7 +431,7 @@
 
   function readStoredBook() {
     try {
-      const raw = localStorage.getItem(STORE);
+      const raw = localStorage.getItem(storeKey());
       if (!raw) return null;
       const stored = JSON.parse(raw);
       return bookOk(stored) ? stored : null;

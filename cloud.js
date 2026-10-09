@@ -81,8 +81,8 @@
 
   function otherShell() {
     var p = location.pathname || "";
-    if (/guest\.html$/i.test(p)) return "send.html";
-    return "guest.html";
+    if (/own\.html$/i.test(p)) return "guest.html";
+    return "own.html";
   }
 
   function isOffline() {
@@ -249,14 +249,41 @@
     }
   }
 
+  function bookPath() {
+    const c = cfg();
+    if (isLiveCoach()) return (c && c.coachPath) || "playbook-coach.json";
+    return (c && c.path) || "playbook.json";
+  }
+
   function contentsUrl() {
     const c = cfg();
-    return api + "/repos/" + c.owner + "/" + c.repo + "/contents/" + c.path;
+    return api + "/repos/" + c.owner + "/" + c.repo + "/contents/" + bookPath();
   }
 
   function extrasPath() {
     const c = cfg();
+    if (isLiveCoach()) return (c && c.coachExtras) || "play-extras-coach.json";
     return (c && c.extras) || "play-extras.json";
+  }
+
+  function setBookSha(sha) {
+    if (isLiveCoach()) window.RaidersCloud.coachSha = sha;
+    else window.RaidersCloud.sha = sha;
+    return sha;
+  }
+
+  function getBookSha() {
+    return isLiveCoach() ? window.RaidersCloud.coachSha : window.RaidersCloud.sha;
+  }
+
+  function setExtrasSha(sha) {
+    if (isLiveCoach()) window.RaidersCloud.coachExtrasSha = sha;
+    else window.RaidersCloud.extrasSha = sha;
+    return sha;
+  }
+
+  function getExtrasSha() {
+    return isLiveCoach() ? window.RaidersCloud.coachExtrasSha : window.RaidersCloud.extrasSha;
   }
 
   function extrasUrl() {
@@ -285,7 +312,7 @@
     const r = await fetchOk(contentsUrl(), { headers: authHeaders(), cache: "no-store" }, 15000);
     if (!r.ok) return null;
     const meta = await r.json();
-    if (meta && meta.sha) window.RaidersCloud.sha = meta.sha;
+    if (meta && meta.sha) setBookSha(meta.sha);
     return (meta && meta.sha) || null;
   }
 
@@ -301,11 +328,11 @@
 
   async function pullFromApi() {
     const c = cfg();
-    if (!c || !c.owner || !c.repo || !c.path) return null;
+    if (!c || !c.owner || !c.repo) return null;
     const r = await fetchOk(contentsUrl(), { headers: authHeaders(), cache: "no-store" }, 15000);
     if (!r.ok) return null;
     const meta = await r.json();
-    if (meta && meta.sha) window.RaidersCloud.sha = meta.sha;
+    if (meta && meta.sha) setBookSha(meta.sha);
     let book = parseBook(meta && meta.content);
     if (book) return book;
     const raw = await fetchOk(contentsUrl(), {
@@ -334,12 +361,12 @@
 
   async function pullFromRaw() {
     const c = cfg();
-    const path = (c && c.path) || "playbook.json";
+    const path = bookPath();
     const owner = (c && c.owner) || "chat-blip";
     const repo = (c && c.repo) || "raiders-play-designer";
     const urls = [
       "https://raw.githubusercontent.com/" + owner + "/" + repo + "/main/" + path + "?t=" + Date.now(),
-      "playbook.json?t=" + Date.now(),
+      path + "?t=" + Date.now(),
     ];
     for (let i = 0; i < urls.length; i++) {
       try {
@@ -407,7 +434,7 @@
       const r = await fetchOk(extrasUrl(), { headers: authHeaders(), cache: "no-store" }, 10000);
       if (r.ok) {
         const meta = await r.json();
-        if (meta && meta.sha) window.RaidersCloud.extrasSha = meta.sha;
+        if (meta && meta.sha) setExtrasSha(meta.sha);
         const extras = parseExtras(meta && meta.content);
         if (extras) return extras;
       }
@@ -445,7 +472,7 @@
     const payload = {
       message: "Update play extras",
       content: content,
-      sha: window.RaidersCloud.extrasSha || undefined,
+      sha: getExtrasSha() || undefined,
     };
     try {
       let r = await fetchOk(extrasUrl(), {
@@ -458,7 +485,7 @@
         if (latest.ok) {
           const meta = await latest.json();
           if (meta && meta.sha) {
-            window.RaidersCloud.extrasSha = meta.sha;
+            setExtrasSha(meta.sha);
             payload.sha = meta.sha;
             r = await fetchOk(extrasUrl(), {
               method: "PUT",
@@ -477,7 +504,7 @@
       }
       if (!r.ok) return { ok: false, reason: "http-" + r.status };
       const out = await r.json();
-      if (out && out.content && out.content.sha) window.RaidersCloud.extrasSha = out.content.sha;
+      if (out && out.content && out.content.sha) setExtrasSha(out.content.sha);
       return { ok: true, extras: extras };
     } catch (e) {
       return { ok: false, reason: "network" };
@@ -506,7 +533,7 @@
       return extrasRes && extrasRes.ok ? { ok: true, extrasOnly: true } : { ok: false, reason: "encode" };
     }
     try {
-      const sha = window.RaidersCloud.sha || (await latestSha());
+      const sha = getBookSha() || (await latestSha());
       const payload = {
         message: "Update playbook",
         content: content,
@@ -531,7 +558,7 @@
       }
       if (!r.ok) return extrasRes && extrasRes.ok ? { ok: true, extrasOnly: true } : { ok: false, reason: "http-" + r.status };
       const out = await r.json();
-      if (out && out.content && out.content.sha) window.RaidersCloud.sha = out.content.sha;
+      if (out && out.content && out.content.sha) setBookSha(out.content.sha);
       else if (out && out.commit) await latestSha();
       return { ok: true };
     } catch (e) {
@@ -542,6 +569,8 @@
   window.RaidersCloud = {
     sha: null,
     extrasSha: null,
+    coachSha: null,
+    coachExtrasSha: null,
     hasPin: hasPin,
     canPush: canPush,
     isCoach: isLiveCoach,
