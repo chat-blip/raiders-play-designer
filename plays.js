@@ -179,6 +179,7 @@
     "Flag": { family: "Flag", te: "right", backs: "flag" },
     "I Formation": { family: "I Formation", te: "right", backs: "flag-i" },
     "Single Back": { family: "Single Back", te: "right", backs: "flag-sb" },
+    "Spread": { family: "Spread", te: "right", backs: "flag-spread" },
   };
 
   function flagOffense() {
@@ -208,6 +209,16 @@
       P("Y", "Y", "off", CX, LOS + 92),
       P("X", "X", "off", 288, LOS),
       P("Z", "Z", "off", 940, LOS),
+    ];
+  }
+
+  function flagSpreadOffense() {
+    return [
+      P("C", "C", "off", 637, LOS),
+      P("QB", "QB", "off", 639, LOS + 78),
+      P("Y", "Y", "off", 842, LOS + 36),
+      P("X", "X", "off", 277, LOS),
+      P("Z", "Z", "off", 1009, LOS + 2),
     ];
   }
 
@@ -329,6 +340,8 @@
       players = flagIOffense().concat(defensePlayers(defName || "Flag 5", f.te));
     } else if (f.backs === "flag-sb") {
       players = flagSingleBackOffense().concat(defensePlayers(defName || "Flag 5", f.te));
+    } else if (f.backs === "flag-spread") {
+      players = flagSpreadOffense().concat(defensePlayers(defName || "Flag 5", f.te));
     } else {
       players = [
         ...oLine(f.te),
