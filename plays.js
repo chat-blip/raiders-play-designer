@@ -178,6 +178,7 @@
     "SplitBack Right": { family: "SplitBack formation", te: "right", backs: "splitback" },
     "Flag": { family: "Flag", te: "right", backs: "flag" },
     "I Formation": { family: "I Formation", te: "right", backs: "flag-i" },
+    "Single Back": { family: "Single Back", te: "right", backs: "flag-sb" },
   };
 
   function flagOffense() {
@@ -197,6 +198,16 @@
       P("X", "X", "off", CX, LOS + 80),
       P("Y", "Y", "off", CX, LOS + 120),
       P("Z", "Z", "off", CX, LOS + 160),
+    ];
+  }
+
+  function flagSingleBackOffense() {
+    return [
+      P("C", "C", "off", CX, LOS),
+      P("QB", "QB", "off", CX, LOS + 40),
+      P("Y", "Y", "off", CX, LOS + 92),
+      P("X", "X", "off", 288, LOS),
+      P("Z", "Z", "off", 940, LOS),
     ];
   }
 
@@ -316,6 +327,8 @@
       players = flagOffense().concat(defensePlayers(defName || "Flag 5", f.te));
     } else if (f.backs === "flag-i") {
       players = flagIOffense().concat(defensePlayers(defName || "Flag 5", f.te));
+    } else if (f.backs === "flag-sb") {
+      players = flagSingleBackOffense().concat(defensePlayers(defName || "Flag 5", f.te));
     } else {
       players = [
         ...oLine(f.te),

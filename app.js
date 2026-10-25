@@ -3221,8 +3221,10 @@
   }
 
   function builtinOffNames() {
-    if (isFlag()) return ["Flag", "I Formation"];
-    return Object.keys(RaidersPlays.FORMATIONS).filter(function (n) { return n !== "Flag" && n !== "I Formation"; });
+    if (isFlag()) return ["Flag", "I Formation", "Single Back"];
+    return Object.keys(RaidersPlays.FORMATIONS).filter(function (n) {
+      return n !== "Flag" && n !== "I Formation" && n !== "Single Back";
+    });
   }
 
   function builtinDefNames() {
