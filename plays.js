@@ -214,11 +214,11 @@
 
   function flagSpreadOffense() {
     return [
-      P("C", "C", "off", 637, LOS),
-      P("QB", "QB", "off", 639, LOS + 78),
-      P("Y", "Y", "off", 842, LOS + 36),
-      P("X", "X", "off", 277, LOS),
-      P("Z", "Z", "off", 1009, LOS + 2),
+      P("C", "C", "off", 637, 341),
+      P("QB", "QB", "off", 639, 441),
+      P("Y", "Y", "off", 842, 387),
+      P("X", "X", "off", 277, 341),
+      P("Z", "Z", "off", 1009, 344),
     ];
   }
 
