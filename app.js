@@ -29,6 +29,7 @@
   const R = 20;
   const DEF_S = 18;
   const DEF_S_BIG = 25;
+  const DEF_S_FLAG = 28;
   const ROSTER_SPOTS = ["QB", "A", "B", "X", "Y", "Z", "LT", "LG", "C", "RG", "RT"];
 
   const state = {
@@ -618,6 +619,7 @@
     if (!b.activeSetId || !b.sets.some(function (s) { return s.id === b.activeSetId; })) {
       b.activeSetId = b.sets[0].id;
     }
+    renameFlagDefenseLabels(b);
     if (!b.roster || typeof b.roster !== "object") b.roster = {};
     if (!Array.isArray(b.customOff)) b.customOff = [];
     if (!Array.isArray(b.customDef)) b.customDef = [];
@@ -1383,18 +1385,38 @@
     return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
   }
 
+  function renameFlagDefenseLabels(book) {
+    if (!isFlag() || !book) return;
+    const map = { WSC: "WC", WWC: "WC", SSC: "SC", SSS: "SS", WWS: "WS" };
+    function fix(pl) {
+      if (!pl || pl.side !== "def") return;
+      if (map[pl.label]) pl.label = map[pl.label];
+    }
+    (book.plays || []).forEach(function (p) {
+      (p.players || []).forEach(fix);
+    });
+    (book.customDef || []).forEach(function (f) {
+      (f.players || []).forEach(fix);
+    });
+  }
+
   function defGlyph(p) {
+    if (isFlag()) return DEF_S_FLAG;
     return isDefensePlay(p) ? DEF_S_BIG : DEF_S;
+  }
+
+  function defHitPad(p) {
+    const s = defGlyph(p);
+    return s + (isFlag() ? 8 : 6);
   }
 
   function hitPlayer(pt, players) {
     let best = null;
     let bestD = 1e9;
-    const bigDef = isDefensePlay(play());
     players.forEach((pl) => {
       if (state.hideDef && pl.side === "def") return;
       const d = dist(pt, pl);
-      const lim = pl.side === "def" ? (bigDef ? DEF_S_BIG + 8 : DEF_S + 6) : R + 6;
+      const lim = pl.side === "def" ? defHitPad(play()) : R + 6;
       if (d <= lim && d < bestD) {
         bestD = d;
         best = pl;
@@ -2338,7 +2360,7 @@
         const ghost = document.createElementNS("http://www.w3.org/2000/svg", "circle");
         ghost.setAttribute("cx", pl.x);
         ghost.setAttribute("cy", pl.y);
-        ghost.setAttribute("r", pl.side === "def" ? 12 : R);
+        ghost.setAttribute("r", pl.side === "def" ? (isFlag() ? 16 : 12) : R);
         ghost.setAttribute("class", "player-ghost");
         g.appendChild(ghost);
       }
@@ -2378,7 +2400,7 @@
       const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
       t.setAttribute("class", "pos");
       t.setAttribute("x", pos.x);
-      t.setAttribute("y", who ? (pl.side === "off" ? pos.y - 3 : pos.y - 2) : pos.y + (bigDef && pl.side === "def" ? 7 : 5));
+      t.setAttribute("y", who ? (pl.side === "off" ? pos.y - 3 : pos.y - 2) : pos.y + (pl.side === "def" ? (isFlag() ? 9 : (bigDef ? 7 : 5)) : 5));
       t.setAttribute("text-anchor", "middle");
       t.textContent = pl.label;
       wrap.appendChild(t);
@@ -2386,7 +2408,7 @@
         const w = document.createElementNS("http://www.w3.org/2000/svg", "text");
         w.setAttribute("class", "who");
         w.setAttribute("x", pos.x);
-        w.setAttribute("y", pos.y + (bigDef && pl.side === "def" ? 14 : 11));
+        w.setAttribute("y", pos.y + (pl.side === "def" ? (isFlag() ? 16 : (bigDef ? 14 : 11)) : 11));
         w.setAttribute("text-anchor", "middle");
         w.textContent = who;
         wrap.appendChild(w);
@@ -3684,10 +3706,9 @@
   function hitStudioPlayer(pt) {
     let best = null;
     let bestD = 1e9;
-    const bigDef = state.studio.side === "def";
     (state.studio.players || []).forEach(function (pl) {
       const d = dist(pt, pl);
-      const lim = pl.side === "def" ? (bigDef ? DEF_S_BIG + 8 : DEF_S + 6) : R + 6;
+      const lim = pl.side === "def" ? defHitPad({ type: state.studio.side === "def" ? "defense" : "run" }) : R + 6;
       if (d <= lim && d < bestD) {
         bestD = d;
         best = pl;

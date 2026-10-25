@@ -84,11 +84,11 @@
         P("dFS", "FS", "def", CX, LOS - 205),
       ],
       "Flag 5": [
-        P("dWSC", "WSC", "def", 180, LOS - 78),
-        P("dSSC", "SSC", "def", 1020, LOS - 78),
+        P("dWSC", "WC", "def", 180, LOS - 78),
+        P("dSSC", "SC", "def", 1020, LOS - 78),
         P("dLB", "LB", "def", CX, LOS - 118),
-        P("dWWS", "WWS", "def", CX - 150, LOS - 208),
-        P("dSSS", "SSS", "def", CX + 150, LOS - 208),
+        P("dWWS", "WS", "def", CX - 150, LOS - 208),
+        P("dSSS", "SS", "def", CX + 150, LOS - 208),
       ],
       "6-2": [
         P("dDE1", "DE", "def", 426, dl),

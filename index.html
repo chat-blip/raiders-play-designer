@@ -753,6 +753,11 @@
     .player.def text.who { font-size: 8.5px; fill: #c9a227; }
     .defense-play .player.def text { font-size: 11px; }
     .defense-play .player.def text.who { font-size: 10px; }
+    html[data-live-flag="1"] .player.def text { font-size: 14px; font-weight: 800; }
+    html[data-live-flag="1"] .player.def text.who { font-size: 11px; }
+    html[data-live-flag="1"] .defense-play .player.def text { font-size: 14px; }
+    html[data-live-flag="1"] body.present .player.def text { font-size: 16px; }
+    html[data-live-flag="1"] body.present .player.def text.who { font-size: 13px; }
     .roster {
       display: grid; grid-template-columns: 28px 1fr 28px 1fr; gap: 2px 4px;
       align-items: center; margin: 0 0 6px;
@@ -1139,10 +1144,10 @@
   </div>
   <div id="toast"></div>
   <div id="syncChip" hidden></div>
-  <script src="plays.js?v=cloud82"></script>
-  <script src="playbook-data.js?v=cloud82"></script>
-  <script src="cloud-config.js?v=cloud82"></script>
-  <script src="cloud.js?v=cloud82"></script>
-  <script src="app.js?v=cloud82"></script>
+  <script src="plays.js?v=cloud83"></script>
+  <script src="playbook-data.js?v=cloud83"></script>
+  <script src="cloud-config.js?v=cloud83"></script>
+  <script src="cloud.js?v=cloud83"></script>
+  <script src="app.js?v=cloud83"></script>
 </body>
 </html>

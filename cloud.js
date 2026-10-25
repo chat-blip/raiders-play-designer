@@ -96,8 +96,8 @@
 
   function otherShell() {
     var p = location.pathname || "";
-    if (/flag\.html$/i.test(p)) return "off.html";
-    return "flag.html";
+    if (/wc\.html$/i.test(p)) return "flag.html";
+    return "wc.html";
   }
 
   function isOffline() {
