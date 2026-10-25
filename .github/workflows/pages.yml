@@ -8,6 +8,8 @@ on:
       - "play-extras.json"
       - "playbook-coach.json"
       - "play-extras-coach.json"
+      - "playbook-flag.json"
+      - "play-extras-flag.json"
   workflow_dispatch:
 
 permissions:
@@ -32,9 +34,10 @@ jobs:
           PLAYBOOK_TOKEN: ${{ secrets.PLAYBOOK_TOKEN }}
           PLAYBOOK_PIN: ${{ secrets.PLAYBOOK_PIN }}
           PLAYBOOK_COACH_PIN: ${{ secrets.PLAYBOOK_COACH_PIN }}
+          PLAYBOOK_FLAG_PIN: ${{ secrets.PLAYBOOK_FLAG_PIN }}
         run: |
           mkdir -p site
-          cp index.html app.js plays.js playbook.json play-extras.json playbook-coach.json play-extras-coach.json playbook-data.js pack-assets.js cloud.js sw.js manifest.json robots.txt OPEN-ME.txt .nojekyll site/
+          cp index.html app.js plays.js playbook.json play-extras.json playbook-coach.json play-extras-coach.json playbook-flag.json play-extras-flag.json playbook-data.js pack-assets.js cloud.js sw.js manifest.json robots.txt OPEN-ME.txt .nojekyll site/
           python3 - <<'PY'
           import json, os, pathlib, re
           cfg = {
@@ -44,9 +47,12 @@ jobs:
             "extras": "play-extras.json",
             "coachPath": "playbook-coach.json",
             "coachExtras": "play-extras-coach.json",
+            "flagPath": "playbook-flag.json",
+            "flagExtras": "play-extras-flag.json",
             "token": os.environ.get("PLAYBOOK_TOKEN") or "",
             "pin": os.environ.get("PLAYBOOK_PIN") or "",
             "coachPin": os.environ.get("PLAYBOOK_COACH_PIN") or "",
+            "flagPin": os.environ.get("PLAYBOOK_FLAG_PIN") or "",
           }
           open("site/cloud-config.js", "w", encoding="utf-8").write(
               "window.RAIDERS_CLOUD = " + json.dumps(cfg) + ";\n"
@@ -99,6 +105,7 @@ jobs:
           pathlib.Path("site/guest.html").write_text(text, encoding="utf-8")
           pathlib.Path("site/own.html").write_text(text, encoding="utf-8")
           pathlib.Path("site/off.html").write_text(text, encoding="utf-8")
+          pathlib.Path("site/flag.html").write_text(text, encoding="utf-8")
           pathlib.Path("site/version.json").write_text(
               json.dumps({"build": "run" + stamp}) + "\n",
               encoding="utf-8",
@@ -106,6 +113,7 @@ jobs:
           print("cloud_token_len", len(cfg["token"]))
           print("cloud_pin_len", len(cfg["pin"]))
           print("cloud_coach_pin_len", len(cfg.get("coachPin") or ""))
+          print("cloud_flag_pin_len", len(cfg.get("flagPin") or ""))
           print("build", "run" + stamp)
           PY
       - uses: actions/configure-pages@v5

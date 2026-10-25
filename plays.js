@@ -83,6 +83,13 @@
         P("dCB2", "CB", "def", 990, LOS - 72),
         P("dFS", "FS", "def", CX, LOS - 205),
       ],
+      "Flag 5": [
+        P("dWSC", "WSC", "def", 180, LOS - 78),
+        P("dSSC", "SSC", "def", 1020, LOS - 78),
+        P("dLB", "LB", "def", CX, LOS - 118),
+        P("dWWS", "WWS", "def", CX - 150, LOS - 208),
+        P("dSSS", "SSS", "def", CX + 150, LOS - 208),
+      ],
       "6-2": [
         P("dDE1", "DE", "def", 426, dl),
         P("dDT1", "DT", "def", 506, dl),
@@ -169,7 +176,18 @@
     "Tight Left": { family: "Tight formation", te: "left", backs: "tight" },
     "SplitBack Left": { family: "SplitBack formation", te: "left", backs: "splitback" },
     "SplitBack Right": { family: "SplitBack formation", te: "right", backs: "splitback" },
+    "Flag": { family: "Flag", te: "right", backs: "flag" },
   };
+
+  function flagOffense() {
+    return [
+      P("C", "C", "off", CX, LOS),
+      P("QB", "QB", "off", CX, LOS + 52),
+      P("RB", "RB", "off", CX, LOS + 120),
+      P("X", "X", "off", 160, LOS + 10),
+      P("Z", "Z", "off", 1040, LOS + 10),
+    ];
+  }
 
   function batmanOffense(teSide) {
     function mx(x) {
@@ -283,6 +301,8 @@
       players = tightOffense(f.te).concat(defensePlayers(defName || "4-4 Base", f.te));
     } else if (f.backs === "splitback") {
       players = splitBackOffense(f.te).concat(defensePlayers(defName || "4-4 Base", f.te));
+    } else if (f.backs === "flag") {
+      players = flagOffense().concat(defensePlayers(defName || "Flag 5", f.te));
     } else {
       players = [
         ...oLine(f.te),

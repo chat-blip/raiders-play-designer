@@ -17,6 +17,7 @@
     const c = cfg();
     if (!c || !pin) return "";
     if (c.pin && pin === c.pin) return "edit";
+    if (c.flagPin && pin === c.flagPin) return "flag";
     return "";
   }
 
@@ -27,8 +28,16 @@
     if (role === "coach") {
       document.documentElement.setAttribute("data-coach", "1");
       document.documentElement.setAttribute("data-live-coach", "1");
+      document.documentElement.removeAttribute("data-live-flag");
+    } else if (role === "flag") {
+      document.documentElement.setAttribute("data-live-flag", "1");
+      document.documentElement.removeAttribute("data-live-coach");
+      if (document.documentElement.getAttribute("data-pack-coach") !== "1") {
+        document.documentElement.removeAttribute("data-coach");
+      }
     } else {
       document.documentElement.removeAttribute("data-live-coach");
+      document.documentElement.removeAttribute("data-live-flag");
       if (document.documentElement.getAttribute("data-coach") === "1" &&
           document.documentElement.getAttribute("data-pack-coach") !== "1") {
         document.documentElement.removeAttribute("data-coach");
@@ -41,6 +50,13 @@
       if (localStorage.getItem(ROLE) === "coach") return true;
     } catch (e) {}
     return document.documentElement.getAttribute("data-live-coach") === "1";
+  }
+
+  function isLiveFlag() {
+    try {
+      if (localStorage.getItem(ROLE) === "flag") return true;
+    } catch (e) {}
+    return document.documentElement.getAttribute("data-live-flag") === "1";
   }
 
   function canPush() {
@@ -80,8 +96,8 @@
 
   function otherShell() {
     var p = location.pathname || "";
-    if (/off\.html$/i.test(p)) return "own.html";
-    return "off.html";
+    if (/flag\.html$/i.test(p)) return "off.html";
+    return "flag.html";
   }
 
   function isOffline() {
@@ -251,6 +267,7 @@
   function bookPath() {
     const c = cfg();
     if (isLiveCoach()) return (c && c.coachPath) || "playbook-coach.json";
+    if (isLiveFlag()) return (c && c.flagPath) || "playbook-flag.json";
     return (c && c.path) || "playbook.json";
   }
 
@@ -262,27 +279,34 @@
   function extrasPath() {
     const c = cfg();
     if (isLiveCoach()) return (c && c.coachExtras) || "play-extras-coach.json";
+    if (isLiveFlag()) return (c && c.flagExtras) || "play-extras-flag.json";
     return (c && c.extras) || "play-extras.json";
   }
 
   function setBookSha(sha) {
     if (isLiveCoach()) window.RaidersCloud.coachSha = sha;
+    else if (isLiveFlag()) window.RaidersCloud.flagSha = sha;
     else window.RaidersCloud.sha = sha;
     return sha;
   }
 
   function getBookSha() {
-    return isLiveCoach() ? window.RaidersCloud.coachSha : window.RaidersCloud.sha;
+    if (isLiveCoach()) return window.RaidersCloud.coachSha;
+    if (isLiveFlag()) return window.RaidersCloud.flagSha;
+    return window.RaidersCloud.sha;
   }
 
   function setExtrasSha(sha) {
     if (isLiveCoach()) window.RaidersCloud.coachExtrasSha = sha;
+    else if (isLiveFlag()) window.RaidersCloud.flagExtrasSha = sha;
     else window.RaidersCloud.extrasSha = sha;
     return sha;
   }
 
   function getExtrasSha() {
-    return isLiveCoach() ? window.RaidersCloud.coachExtrasSha : window.RaidersCloud.extrasSha;
+    if (isLiveCoach()) return window.RaidersCloud.coachExtrasSha;
+    if (isLiveFlag()) return window.RaidersCloud.flagExtrasSha;
+    return window.RaidersCloud.extrasSha;
   }
 
   function extrasUrl() {
@@ -570,9 +594,12 @@
     extrasSha: null,
     coachSha: null,
     coachExtrasSha: null,
+    flagSha: null,
+    flagExtrasSha: null,
     hasPin: hasPin,
     canPush: canPush,
     isCoach: isLiveCoach,
+    isFlag: isLiveFlag,
     unlock: unlock,
     signOut: signOut,
     reloadFresh: reloadFresh,

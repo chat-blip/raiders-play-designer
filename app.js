@@ -3,15 +3,21 @@
   const UI_STORE = "raiders-ui-v1";
 
   function storeKey() {
-    return isCoach() ? "raiders-playbook-coach-v1" : "raiders-playbook-v1";
+    if (isFlag()) return "raiders-playbook-flag-v1";
+    if (isCoach()) return "raiders-playbook-coach-v1";
+    return "raiders-playbook-v1";
   }
 
   function backupKey() {
-    return isCoach() ? "raiders-playbook-backup-coach" : "raiders-playbook-backup";
+    if (isFlag()) return "raiders-playbook-backup-flag";
+    if (isCoach()) return "raiders-playbook-backup-coach";
+    return "raiders-playbook-backup";
   }
 
   function cloudAtKey() {
-    return isCoach() ? "raiders-cloud-at-coach" : "raiders-cloud-at";
+    if (isFlag()) return "raiders-cloud-at-flag";
+    if (isCoach()) return "raiders-cloud-at-coach";
+    return "raiders-cloud-at";
   }
   const SIDE_MIN = 80;
   const SIDE_DEFAULT = 268;
@@ -72,6 +78,11 @@
   function isCoach() {
     return document.documentElement.getAttribute("data-coach") === "1" ||
       !!(window.RaidersCloud && window.RaidersCloud.isCoach && window.RaidersCloud.isCoach());
+  }
+
+  function isFlag() {
+    return document.documentElement.getAttribute("data-live-flag") === "1" ||
+      !!(window.RaidersCloud && window.RaidersCloud.isFlag && window.RaidersCloud.isFlag());
   }
 
   function play() {
@@ -440,7 +451,23 @@
     }
   }
 
+  function blankFlagBook() {
+    const play = RaidersPlays.blankPlay("Flag", "01", "New Play", "run", "Flag 5");
+    const book = {
+      title: "Raiders · Flag",
+      subtitle: "5 on 5",
+      school: "St. Regis Catholic School",
+      plays: [play],
+      customOff: [],
+      customDef: [],
+      exportedAt: Date.now(),
+    };
+    ensureSets(book);
+    return book;
+  }
+
   function loadFallback() {
+    if (isFlag()) return blankFlagBook();
     const portable = window.RAIDERS_PORTABLE_BOOK;
     if (bookOk(portable)) {
       const book = clone(portable);
@@ -649,7 +676,8 @@
         })
         .map(function (pl) { return { key: pl.id, label: pl.label }; });
     }
-    return ROSTER_SPOTS.map(function (spot) { return { key: spot, label: spot }; });
+    const spots = isFlag() ? ["C", "QB", "RB", "X", "Z"] : ROSTER_SPOTS;
+    return spots.map(function (spot) { return { key: spot, label: spot }; });
   }
 
   function kidKey(pl, playObj) {
@@ -2963,11 +2991,11 @@
 
   function newPlay() {
     const cur = play();
-    const formation = $("formSelect").value || "I Right";
+    const formation = $("formSelect").value || (isFlag() ? "Flag" : "I Right");
     const nums = state.book.plays.map((p) => parseInt(p.number, 10) || 0);
     const next = String(Math.max(0, ...nums) + 1).padStart(2, "0");
     const type = cur && cur.type === "defense" ? "defense" : (cur && cur.type === "pass" ? "pass" : "run");
-    const defName = $("defSelect").value || "4-4 Base";
+    const defName = $("defSelect").value || (isFlag() ? "Flag 5" : "4-4 Base");
     const p = RaidersPlays.blankPlay(formation, next, type === "defense" ? "New Defense" : "New Play", type, defName);
     p.players = stampPlayers(formation, defName);
     p.family = familyFor(formation);
@@ -3027,7 +3055,7 @@
     const name = $("formSelect").value;
     const p = play();
     pushUndo();
-    const defName = p.defense || "4-4 Base";
+    const defName = p.defense || (isFlag() ? "Flag 5" : "4-4 Base");
     const fresh = stampPlayers(name, defName);
     const oldBy = {};
     p.players.forEach((pl) => {
@@ -3145,10 +3173,12 @@
   }
 
   function builtinOffNames() {
-    return Object.keys(RaidersPlays.FORMATIONS);
+    if (isFlag()) return ["Flag"];
+    return Object.keys(RaidersPlays.FORMATIONS).filter(function (n) { return n !== "Flag"; });
   }
 
   function builtinDefNames() {
+    if (isFlag()) return ["Flag 5"];
     return RaidersPlays.DEF_FORMATIONS || [];
   }
 
@@ -3168,7 +3198,7 @@
   function stockPlayers(name, side) {
     if (side === "def") return templatePlayers(RaidersPlays.defensePlayers(name, "right"), "def");
     return templatePlayers(
-      RaidersPlays.formationPlayers(name, "4-4 Base").filter(function (pl) { return pl.side === "off"; }),
+      RaidersPlays.formationPlayers(name, isFlag() ? "Flag 5" : "4-4 Base").filter(function (pl) { return pl.side === "off"; }),
       "off"
     );
   }
@@ -3306,9 +3336,12 @@
   }
 
   function studioBlankPlayers(side) {
-    if (side === "def") return templatePlayers(RaidersPlays.defensePlayers("4-4 Base", "right"), "def");
+    if (side === "def") {
+      return templatePlayers(RaidersPlays.defensePlayers(isFlag() ? "Flag 5" : "4-4 Base", "right"), "def");
+    }
     return templatePlayers(
-      RaidersPlays.formationPlayers("I Left", "4-4 Base").filter(function (pl) { return pl.side === "off"; }),
+      RaidersPlays.formationPlayers(isFlag() ? "Flag" : "I Left", isFlag() ? "Flag 5" : "4-4 Base")
+        .filter(function (pl) { return pl.side === "off"; }),
       "off"
     );
   }
@@ -3351,8 +3384,8 @@
     state.studio.side = side;
     const p = play();
     const want = side === "def"
-      ? (($("defSelect") && $("defSelect").value) || (p && p.defense) || "4-4 Base")
-      : (($("formSelect") && $("formSelect").value) || (p && p.formation) || "I Right");
+      ? (($("defSelect") && $("defSelect").value) || (p && p.defense) || (isFlag() ? "Flag 5" : "4-4 Base"))
+      : (($("formSelect") && $("formSelect").value) || (p && p.formation) || (isFlag() ? "Flag" : "I Right"));
     const items = studioFormItems();
     const hit = items.find(function (it) { return it.name === want; });
     loadStudioNamed(hit ? hit.name : (items[0] ? items[0].name : ""));
@@ -3712,8 +3745,8 @@
     const preferDef = isDefensePlay(p);
     const side = preferDef ? "def" : "off";
     const name = side === "def"
-      ? (($("defSelect") && $("defSelect").value) || (p && p.defense) || "4-4 Base")
-      : (($("formSelect") && $("formSelect").value) || (p && p.formation) || "I Right");
+      ? (($("defSelect") && $("defSelect").value) || (p && p.defense) || (isFlag() ? "Flag 5" : "4-4 Base"))
+      : (($("formSelect") && $("formSelect").value) || (p && p.formation) || (isFlag() ? "Flag" : "I Right"));
     state.studio = {
       side: side,
       id: null,
@@ -4579,6 +4612,13 @@
     if ($("defSelect")) $("defSelect").disabled = true;
   }
 
+  function applyFlagChrome() {
+    if (!isFlag()) return;
+    const brand = document.querySelector(".brand span");
+    if (brand) brand.textContent = "Flag · 5 on 5";
+    document.title = "Raiders Flag Designer";
+  }
+
   async function boot() {
     if (!isCoach() && window.RaidersCloud) await window.RaidersCloud.unlock();
     fillFormations();
@@ -4600,6 +4640,7 @@
     render();
     setListFocus("book");
     applyCoachLock();
+    applyFlagChrome();
     if (isCoach()) return;
     syncOfflineChip();
     window.addEventListener("online", function () {
