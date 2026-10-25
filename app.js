@@ -3221,9 +3221,11 @@
   }
 
   function builtinOffNames() {
-    if (isFlag()) return ["Flag", "I Formation", "Single Back", "Spread"];
+    if (isFlag()) {
+      return ["Flag", "I Formation", "Single Back", "Spread", "Bunch", "Trips", "Trips Stack", "Twins", "Twins Stack", "Double Back", "Single Set"];
+    }
     return Object.keys(RaidersPlays.FORMATIONS).filter(function (n) {
-      return n !== "Flag" && n !== "I Formation" && n !== "Single Back" && n !== "Spread";
+      return ["Flag", "I Formation", "Single Back", "Spread", "Bunch", "Trips", "Trips Stack", "Twins", "Twins Stack", "Double Back", "Single Set"].indexOf(n) < 0;
     });
   }
 

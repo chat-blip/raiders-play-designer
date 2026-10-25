@@ -180,6 +180,13 @@
     "I Formation": { family: "I Formation", te: "right", backs: "flag-i" },
     "Single Back": { family: "Single Back", te: "right", backs: "flag-sb" },
     "Spread": { family: "Spread", te: "right", backs: "flag-spread" },
+    "Bunch": { family: "Bunch", te: "right", backs: "flag-bunch" },
+    "Trips": { family: "Trips", te: "right", backs: "flag-trips" },
+    "Trips Stack": { family: "Trips Stack", te: "right", backs: "flag-trips-stack" },
+    "Twins": { family: "Twins", te: "right", backs: "flag-twins" },
+    "Twins Stack": { family: "Twins Stack", te: "right", backs: "flag-twins-stack" },
+    "Double Back": { family: "Double Back", te: "right", backs: "flag-double" },
+    "Single Set": { family: "Single Set", te: "right", backs: "flag-single-set" },
   };
 
   function flagOffense() {
@@ -194,11 +201,81 @@
 
   function flagIOffense() {
     return [
-      P("C", "C", "off", CX, LOS),
-      P("QB", "QB", "off", CX, LOS + 40),
-      P("X", "X", "off", CX, LOS + 80),
-      P("Y", "Y", "off", CX, LOS + 120),
-      P("Z", "Z", "off", CX, LOS + 160),
+      P("C", "C", "off", 597, 343),
+      P("QB", "QB", "off", 597, 394),
+      P("Y", "Y", "off", 597, 496),
+      P("X", "X", "off", 597, 445),
+      P("Z", "Z", "off", 597, 547),
+    ];
+  }
+
+  function flagBunchOffense() {
+    return [
+      P("C", "C", "off", 627, 339),
+      P("QB", "QB", "off", 627, 435),
+      P("Y", "Y", "off", 675, 339),
+      P("X", "X", "off", 576, 339),
+      P("Z", "Z", "off", 720, 339),
+    ];
+  }
+
+  function flagTripsOffense() {
+    return [
+      P("C", "C", "off", 623, 339),
+      P("QB", "QB", "off", 623, 435),
+      P("Y", "Y", "off", 889, 339),
+      P("X", "X", "off", 760, 339),
+      P("Z", "Z", "off", 1011, 339),
+    ];
+  }
+
+  function flagTripsStackOffense() {
+    return [
+      P("C", "C", "off", 574, 339),
+      P("QB", "QB", "off", 574, 435),
+      P("Y", "Y", "off", 866, 386),
+      P("X", "X", "off", 866, 338),
+      P("Z", "Z", "off", 866, 435),
+    ];
+  }
+
+  function flagTwinsOffense() {
+    return [
+      P("C", "C", "off", 648, 343),
+      P("QB", "QB", "off", 648, 443),
+      P("Y", "Y", "off", 902, 394),
+      P("X", "X", "off", 604, 343),
+      P("Z", "Z", "off", 1017, 343),
+    ];
+  }
+
+  function flagTwinsStackOffense() {
+    return [
+      P("C", "C", "off", 601, 343),
+      P("QB", "QB", "off", 601, 444),
+      P("Y", "Y", "off", 927, 347),
+      P("X", "X", "off", 510, 343),
+      P("Z", "Z", "off", 933, 399),
+    ];
+  }
+
+  function flagDoubleBackOffense() {
+    return [
+      P("C", "C", "off", 614, 343),
+      P("QB", "QB", "off", 614, 393),
+      P("Y", "Y", "off", 689, 452),
+      P("X", "X", "off", 530, 444),
+      P("Z", "Z", "off", 927, 343),
+    ];
+  }
+
+  function flagSingleSetOffense() {
+    return [
+      P("C", "C", "off", 600, 343),
+      P("QB", "QB", "off", 600, 393),
+      P("Y", "Y", "off", 764, 341),
+      P("X", "X", "off", 600, 467),
+      P("Z", "Z", "off", 939, 343),
     ];
   }
 
@@ -342,6 +419,20 @@
       players = flagSingleBackOffense().concat(defensePlayers(defName || "Flag 5", f.te));
     } else if (f.backs === "flag-spread") {
       players = flagSpreadOffense().concat(defensePlayers(defName || "Flag 5", f.te));
+    } else if (f.backs === "flag-bunch") {
+      players = flagBunchOffense().concat(defensePlayers(defName || "Flag 5", f.te));
+    } else if (f.backs === "flag-trips") {
+      players = flagTripsOffense().concat(defensePlayers(defName || "Flag 5", f.te));
+    } else if (f.backs === "flag-trips-stack") {
+      players = flagTripsStackOffense().concat(defensePlayers(defName || "Flag 5", f.te));
+    } else if (f.backs === "flag-twins") {
+      players = flagTwinsOffense().concat(defensePlayers(defName || "Flag 5", f.te));
+    } else if (f.backs === "flag-twins-stack") {
+      players = flagTwinsStackOffense().concat(defensePlayers(defName || "Flag 5", f.te));
+    } else if (f.backs === "flag-double") {
+      players = flagDoubleBackOffense().concat(defensePlayers(defName || "Flag 5", f.te));
+    } else if (f.backs === "flag-single-set") {
+      players = flagSingleSetOffense().concat(defensePlayers(defName || "Flag 5", f.te));
     } else {
       players = [
         ...oLine(f.te),
