@@ -96,8 +96,8 @@
 
   function otherShell() {
     var p = location.pathname || "";
-    if (/spread2\.html$/i.test(p)) return "spread.html";
-    return "spread2.html";
+    if (/spread3\.html$/i.test(p)) return "spread2.html";
+    return "spread3.html";
   }
 
   function isOffline() {
