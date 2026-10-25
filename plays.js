@@ -183,7 +183,7 @@
     return [
       P("C", "C", "off", CX, LOS),
       P("QB", "QB", "off", CX, LOS + 52),
-      P("RB", "RB", "off", CX, LOS + 120),
+      P("Y", "Y", "off", CX, LOS + 120),
       P("X", "X", "off", 160, LOS + 10),
       P("Z", "Z", "off", 1040, LOS + 10),
     ];

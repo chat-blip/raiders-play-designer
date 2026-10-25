@@ -620,6 +620,7 @@
       b.activeSetId = b.sets[0].id;
     }
     renameFlagDefenseLabels(b);
+    renameFlagRbToY(b);
     if (!b.roster || typeof b.roster !== "object") b.roster = {};
     if (!Array.isArray(b.customOff)) b.customOff = [];
     if (!Array.isArray(b.customDef)) b.customDef = [];
@@ -678,7 +679,7 @@
         })
         .map(function (pl) { return { key: pl.id, label: pl.label }; });
     }
-    const spots = isFlag() ? ["C", "QB", "RB", "X", "Z"] : ROSTER_SPOTS;
+    const spots = isFlag() ? ["C", "QB", "Y", "X", "Z"] : ROSTER_SPOTS;
     return spots.map(function (spot) { return { key: spot, label: spot }; });
   }
 
@@ -1398,6 +1399,31 @@
     (book.customDef || []).forEach(function (f) {
       (f.players || []).forEach(fix);
     });
+  }
+
+  function renameFlagRbToY(book) {
+    if (!isFlag() || !book) return;
+    function fixPlayer(pl) {
+      if (!pl || pl.side !== "off") return;
+      if (pl.id === "RB") pl.id = "Y";
+      if (pl.label === "RB") pl.label = "Y";
+    }
+    function fixKids(kids) {
+      if (!kids || !kids.RB) return;
+      if (!kids.Y) kids.Y = kids.RB;
+      delete kids.RB;
+    }
+    (book.plays || []).forEach(function (p) {
+      (p.players || []).forEach(fixPlayer);
+      (p.assignments || []).forEach(function (a) {
+        if (a && a.from === "RB") a.from = "Y";
+      });
+      fixKids(p.kids);
+    });
+    (book.customOff || []).forEach(function (f) {
+      (f.players || []).forEach(fixPlayer);
+    });
+    fixKids(book.roster);
   }
 
   function defGlyph(p) {
