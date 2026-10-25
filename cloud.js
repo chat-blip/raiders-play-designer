@@ -17,7 +17,6 @@
     const c = cfg();
     if (!c || !pin) return "";
     if (c.pin && pin === c.pin) return "edit";
-    if (c.coachPin && pin === c.coachPin) return "coach";
     return "";
   }
 
@@ -81,8 +80,8 @@
 
   function otherShell() {
     var p = location.pathname || "";
-    if (/own\.html$/i.test(p)) return "guest.html";
-    return "own.html";
+    if (/off\.html$/i.test(p)) return "own.html";
+    return "off.html";
   }
 
   function isOffline() {
