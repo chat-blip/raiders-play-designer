@@ -90,6 +90,41 @@
         P("dWWS", "WS", "def", CX - 150, LOS - 208),
         P("dSSS", "SS", "def", CX + 150, LOS - 208),
       ],
+      "Man": [
+        P("dWSC", "WC", "def", 268, 212),
+        P("dSSC", "SC", "def", 909, 212),
+        P("dLB", "LB", "def", 504, 132),
+        P("dWWS", "WS", "def", 420, 212),
+        P("dSSS", "SS", "def", 599, 212),
+      ],
+      "Cover 1": [
+        P("dWSC", "WC", "def", 268, 212),
+        P("dSSC", "SC", "def", 936, 212),
+        P("dLB", "LB", "def", 504, 132),
+        P("dWWS", "WS", "def", 604, 217),
+        P("dSSS", "SS", "def", 598, 31),
+      ],
+      "Cover 2": [
+        P("dWSC", "WC", "def", 278, 210),
+        P("dSSC", "SC", "def", 945, 210),
+        P("dLB", "LB", "def", 506, 103),
+        P("dWWS", "WS", "def", 399, 86),
+        P("dSSS", "SS", "def", 837, 86),
+      ],
+      "Cover 3": [
+        P("dWSC", "WC", "def", 239, 79),
+        P("dSSC", "SC", "def", 940, 84),
+        P("dLB", "LB", "def", 764, 208),
+        P("dWWS", "WS", "def", 436, 208),
+        P("dSSS", "SS", "def", 615, 69),
+      ],
+      "Cover 4": [
+        P("dWSC", "WC", "def", 235, 88),
+        P("dSSC", "SC", "def", 961, 92),
+        P("dLB", "LB", "def", 599, 54),
+        P("dWWS", "WS", "def", 389, 92),
+        P("dSSS", "SS", "def", 809, 92),
+      ],
       "6-2": [
         P("dDE1", "DE", "def", 426, dl),
         P("dDT1", "DT", "def", 506, dl),
@@ -109,6 +144,7 @@
   }
 
   const DEF_FORMATIONS = ["4-4 Base", "5-3 Base", "5-3 Bear", "6-2"];
+  const FLAG_DEF_FORMATIONS = ["Flag 5", "Man", "Cover 1", "Cover 2", "Cover 3", "Cover 4"];
 
   function oLine(teSide) {
     const line = [
@@ -765,6 +801,7 @@
     LOS,
     FORMATIONS,
     DEF_FORMATIONS,
+    FLAG_DEF_FORMATIONS,
     resolveDefName,
     pinOLine,
     isOLine,

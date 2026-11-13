@@ -3236,7 +3236,7 @@
   }
 
   function builtinDefNames() {
-    if (isFlag()) return ["Flag 5"];
+    if (isFlag()) return RaidersPlays.FLAG_DEF_FORMATIONS || ["Flag 5"];
     return RaidersPlays.DEF_FORMATIONS || [];
   }
 
