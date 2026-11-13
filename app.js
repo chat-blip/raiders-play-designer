@@ -943,10 +943,10 @@
 
   function trackSpeed(type) {
     if (isFlag()) {
-      if (type === "block") return 123;
-      if (type === "motion") return 152;
+      if (type === "block") return 260;
+      if (type === "motion") return 260;
       if (type === "ball") return 260;
-      return 174;
+      return 260;
     }
     if (type === "block") return 85;
     if (type === "motion") return 105;
