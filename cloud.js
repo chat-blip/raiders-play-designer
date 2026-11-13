@@ -96,8 +96,8 @@
 
   function otherShell() {
     var p = location.pathname || "";
-    if (/pass2\.html$/i.test(p)) return "pass.html";
-    return "pass2.html";
+    if (/pass3\.html$/i.test(p)) return "pass2.html";
+    return "pass3.html";
   }
 
   function isOffline() {

@@ -942,11 +942,16 @@
   }
 
   function trackSpeed(type) {
-    var speed = 120;
-    if (type === "block") speed = 85;
-    else if (type === "motion") speed = 105;
-    else if (type === "ball") speed = 88;
-    return isFlag() ? Math.round(speed * 1.45) : speed;
+    if (isFlag()) {
+      if (type === "block") return 123;
+      if (type === "motion") return 152;
+      if (type === "ball") return 260;
+      return 174;
+    }
+    if (type === "block") return 85;
+    if (type === "motion") return 105;
+    if (type === "ball") return 88;
+    return 120;
   }
 
   function tracksLen(tracks) {
@@ -1071,7 +1076,7 @@
         const len = tr && tr.len > 0.5 ? tr.len : assignPolyLen(a, playObj);
         const ms = (len / Math.max(trackSpeed(a.type), 1)) * 1000;
         if (a.type === "ball" && (a.points || []).length >= 2) {
-          hands.push({ from: pl.id, start: t, dur: Math.max(ms, 320), id: a.id });
+          hands.push({ from: pl.id, start: t, dur: Math.max(ms, isFlag() ? 160 : 320), id: a.id });
         }
         t += Math.max(ms, 40);
       });
