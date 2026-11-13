@@ -942,10 +942,11 @@
   }
 
   function trackSpeed(type) {
-    if (type === "block") return 85;
-    if (type === "motion") return 105;
-    if (type === "ball") return 88;
-    return 120;
+    var speed = 120;
+    if (type === "block") speed = 85;
+    else if (type === "motion") speed = 105;
+    else if (type === "ball") speed = 88;
+    return isFlag() ? Math.round(speed * 1.45) : speed;
   }
 
   function tracksLen(tracks) {
