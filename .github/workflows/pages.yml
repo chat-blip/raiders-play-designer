@@ -119,6 +119,7 @@ jobs:
           pathlib.Path("site/pass3.html").write_text(text, encoding="utf-8")
           pathlib.Path("site/pass4.html").write_text(text, encoding="utf-8")
           pathlib.Path("site/pass5.html").write_text(text, encoding="utf-8")
+          pathlib.Path("site/pass6.html").write_text(text, encoding="utf-8")
           pathlib.Path("site/version.json").write_text(
               json.dumps({"build": "run" + stamp}) + "\n",
               encoding="utf-8",

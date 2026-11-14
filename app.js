@@ -943,10 +943,10 @@
 
   function trackSpeed(type) {
     if (isFlag()) {
-      if (type === "block") return 260;
-      if (type === "motion") return 260;
-      if (type === "ball") return 260;
-      return 260;
+      if (type === "block") return 200;
+      if (type === "motion") return 200;
+      if (type === "ball") return 200;
+      return 200;
     }
     if (type === "block") return 85;
     if (type === "motion") return 105;
@@ -1076,7 +1076,7 @@
         const len = tr && tr.len > 0.5 ? tr.len : assignPolyLen(a, playObj);
         const ms = (len / Math.max(trackSpeed(a.type), 1)) * 1000;
         if (a.type === "ball" && (a.points || []).length >= 2) {
-          hands.push({ from: pl.id, start: t, dur: Math.max(ms, isFlag() ? 160 : 320), id: a.id });
+          hands.push({ from: pl.id, start: t, dur: Math.max(ms, isFlag() ? 200 : 320), id: a.id });
         }
         t += Math.max(ms, 40);
       });
